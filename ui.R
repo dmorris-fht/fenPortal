@@ -51,12 +51,12 @@ dashboardPage(
               ),
       tabItem(tabName = "dipsManage",
               fluidRow(
-                dips_manageUI("dipsManage")
+                #dips_manageUI("dipsManage")
               )
       ),
       tabItem(tabName = "loggersManage",
               fluidRow(
-                
+                #loggers_manageUI("loggersManage),
               )
       ),
       tabItem(tabName = "dipsImport",
