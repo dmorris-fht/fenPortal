@@ -2,7 +2,6 @@ dips_importUI <- function(id, label = "dips import") {
   ns <- NS(id)
     tagList(
       fluidRow(
-        tags$img(id=ns("imgTest"),src=""),
         column(12,column(6,
                h1("Import manual dipwell measurements"),
                HTML("<p>Use this page to import manual dipwell measurements to the database. First, specify one of the following two types of data source:</p> 
@@ -61,7 +60,7 @@ dips_importUI <- function(id, label = "dips import") {
             ),
         #DataTable for the query results
         column(6,
-               h3("Data preview:"),
+               h3("Data preview"),
                div(id = ns("noPreview"), p("No data to preview")),
                hidden(div(id = ns("dipsPreview"), 
                           withSpinner(
@@ -320,8 +319,6 @@ dips_importServer <- function(id,con) {
         req(input$choose_csv)
         file <- input$choose_csv
         ext <- file$type
-        
-        print(file$datapath)
         
         req(file)
         shiny::validate(need(ext == "text/csv", "Please upload a csv file"))
