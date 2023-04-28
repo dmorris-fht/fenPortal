@@ -81,12 +81,12 @@ loggers_manageServer <- function(id, con, role) {
       
       #Configure interface according to permissions
       if(!grepl("c",role,fixed = TRUE)){
-        runjs("$('#add_logger_container').remove()")
-        runjs("$('#add_logger_install').remove()")
-        runjs("$('#add_logger_container').remove()")
+        runjs(paste0("$('#", id ,"-add_logger_container').remove()"))
+        runjs(paste0("$('#", id ,"-add_logger_install').remove()"))
+        runjs(paste0("$('#", id ,"-add_logger_container').remove()"))
       }
       if(!grepl("u",role,fixed = TRUE)){
-        runjs("$('#remove_logger_install').remove()")
+        runjs(paste0("$('#", id ,"-remove_logger_install').remove()"))
       }
       
       #Get installs info
@@ -413,8 +413,9 @@ loggers_manageServer <- function(id, con, role) {
           req(input$interval_sec)
           
           #Insert new logger install
-          dbGetQuery(con, paste0("INSERT INTO hydro_monitoring.logger_configs (logger, create_date, create_by, computer_name, application, application_version, overwrite, schedule_start, schedule_end, type, interval_day, interval_hour, interval_min, interval_sec, notes) VALUES ('"
-                                 , rv$df[input$loggersTable_rows_selected,c("serial")], "',TO_DATE('",
+          dbGetQuery(con, paste0("INSERT INTO hydro_monitoring.logger_configs (logger, name, create_date, create_by, computer_name, application, application_version, overwrite, schedule_start, schedule_end, type, interval_day, interval_hour, interval_min, interval_sec, notes) VALUES ('"
+                                 , rv$df[input$loggersTable_rows_selected,c("serial")], "','",
+                                 input$name, "',TO_DATE('",
                                  input$create_date , "','yyyy-mm-dd'),'",
                                  input$create_by, "','",
                                  input$computer_name, "','",

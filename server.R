@@ -10,7 +10,9 @@ function(input, output, session) {
       
       if(login$role == "cru" || login$role == "cr"){
         dips_importServer("importDips",login$con)
-        weather_importServer("weatherImport",login$con)      }
+        logger_importServer("importLoggers",login$con)
+        weather_importServer("weatherImport",login$con)      
+        }
     }
     )
 }

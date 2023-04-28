@@ -8,23 +8,27 @@ dashboardPage(
   dashboardSidebar(
     sidebarMenu(id = "menu",
       useShinyjs(),
+      useShinyFeedback(),
       menuItem("Home", tabName = "home", icon = icon("home")),
       div(h4("Hydrology"),style="margin-left:10px"),
       menuItem("Explore data", tabName  = "explore", icon = icon("chart-line")),
       menuItem("Manage network", icon = icon("water"), expandedName = "manageMenu",
                  menuSubItem("Manage dipwells", tabName = "dipsManage"),
-                 menuSubItem("Manage loggers", tabName = "loggersManage")
+                 menuSubItem("Manage loggers", tabName = "loggersManage"),
+               menuSubItem("Logger derivation points", tabName  = "loggersDer")
                ),
       menuItem("Import data", icon = icon("file-import"), expandedName = "importMenu",
+               menuSubItem("Import weather data" ,tabName = "weatherImport"),
                  menuSubItem("Import dip data", tabName  = "dipsImport"),
-                 menuSubItem("Import logger data", tabName  = "loggersImport"),
-                 menuSubItem("Import weather data" ,tabName = "weatherImport")
+                 menuSubItem("Import logger data", tabName  = "loggersImport")
                ),
       div(h4("Biological records"),style="margin-left:10px")
       
     )
   ),
   dashboardBody(
+    #Favicon
+    tags$head(tags$link(rel="shortcut icon", href="favicon.ico")),
     
     #Custom css
     tags$head(
@@ -66,7 +70,9 @@ dashboardPage(
                 )
               ),
       tabItem(tabName = "loggersImport",
-                fluidRow()
+                fluidRow(
+                  logger_importUI("importLoggers")
+                )
               ),
       tabItem(tabName = "weatherImport", class = "active",
                 fluidRow(
