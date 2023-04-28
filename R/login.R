@@ -11,7 +11,7 @@ loginUI <- function(id){
       div(
         a(href = 'https://freshwaterhabitats.org.uk/',
           img(src="FHT logo large_clear background.png", height = "100px"),
-          title = "Freshwater Habitats Trust")
+          title = "Freshwater Habitats Trust", target = "_blank")
         , style = "position: absolute;top:0; right:0; padding-top: 10px; padding-right: 10px"),
       
       div(
@@ -22,6 +22,8 @@ loginUI <- function(id){
               margin-top: -150px;
               margin-left: -200px;
               width: 400px;
+              height: calc(90vh);
+              overflow:hidden;
         text-align:center",
         
         h2("Welcome to Freshwater Habitats Trust's Fen Database"),
@@ -32,14 +34,14 @@ loginUI <- function(id){
               inputId     = ns("username"), 
               label       = tagList(icon("user"), 
                                     "User Name"),
-              placeholder = "Enter user name"
+              placeholder = "Enter user name",
             ),
             
             passwordInput(
               inputId     = ns("password"), 
               label       = tagList(icon("unlock-alt"), 
                                     "Password"), 
-              placeholder = "Enter password"
+              placeholder = "Enter password",
             )
             , style = "width: 70%; margin-left: 15%;
             text-align:center"), 
@@ -51,12 +53,11 @@ loginUI <- function(id){
             label = "Log in",
             class = "btn-primary"
           )
-        ), br(),
-        
+        ), 
         
         div(id = ns("loader"),
             withSpinner(textOutput(ns("loginError")), color = "#00839B", size = 1, type = 4)
-            , style="color: red; height:50px")
+            , style="color: red; max-height:50px")
         )
       )
     )
@@ -96,7 +97,7 @@ loginServer <- function(id, login) {
             runjs("$('.cru').remove()")
             runjs("$('.cr').remove()")
             
-            runjs("$(\"[data-expanded='manageMenu']\").closest(\".treeview\").remove()")
+            #runjs("$(\"[data-expanded='manageMenu']\").closest(\".treeview\").remove()")
             runjs("$(\"[data-expanded='importMenu']\").closest(\".treeview\").remove()")
           }
           

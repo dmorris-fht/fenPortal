@@ -2,7 +2,7 @@ dashboardPage(
   dashboardHeader(title = "FHT Fen Database",
                   tags$li(a(href = 'https://freshwaterhabitats.org.uk/',
                             img(src="FHT logo large_clear background.png", height = "40px"),
-                            title = "Freshwater Habitats Trust", style = "padding: 5px 5px 5px 5px !important"),
+                            title = "Freshwater Habitats Trust", style = "padding: 5px 5px 5px 5px !important", target="_blank"),
                           class = "dropdown", style = "padding: 0px !important")
                   ),
   dashboardSidebar(
@@ -10,8 +10,8 @@ dashboardPage(
       useShinyjs(),
       menuItem("Home", tabName = "home", icon = icon("home")),
       div(h4("Hydrology"),style="margin-left:10px"),
-      menuItem("Explore data", tabName  = "explore", icon = icon("stats",lib="glyphicon")),
-      menuItem("Manage installs", expandedName = "manageMenu",
+      menuItem("Explore data", tabName  = "explore", icon = icon("chart-line")),
+      menuItem("Manage network", icon = icon("water"), expandedName = "manageMenu",
                  menuSubItem("Manage dipwells", tabName = "dipsManage"),
                  menuSubItem("Manage loggers", tabName = "loggersManage")
                ),
@@ -30,6 +30,7 @@ dashboardPage(
     tags$head(
       tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")
     ),
+    tags$script(HTML("$('body').addClass('fixed');")),
     
     #Login page
     loginUI("loginForm"),
@@ -56,7 +57,7 @@ dashboardPage(
       ),
       tabItem(tabName = "loggersManage",
               fluidRow(
-                #loggers_manageUI("loggersManage),
+                loggers_manageUI("loggersManage"),
               )
       ),
       tabItem(tabName = "dipsImport",

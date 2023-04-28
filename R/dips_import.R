@@ -3,13 +3,13 @@ dips_importUI <- function(id, label = "dips import") {
     tagList(
       fluidRow(
         tags$img(id=ns("imgTest"),src=""),
-        column(12,column(12,
+        column(12,column(6,
                h1("Import manual dipwell measurements"),
                HTML("<p>Use this page to import manual dipwell measurements to the database. First, specify one of the following two types of data source:</p> 
                  <ul>
                     <li><b>ArcGIS Online feature service:</b> Specify the REST URL for the layer containing the table of dipwell measurements. 
                     You can find the URL for a service on its details page - you just need to add the layer number to the end. To import from a feature service, 
-                    it must be shared publicly and follow the template available <a href='https://fht.maps.arcgis.com/home/item.html?id=804697e8efb843e7adf9ca3badcd56e3'>here</a>.</li>
+                    it must be shared publicly and follow the template available <a href='https://fht.maps.arcgis.com/home/item.html?id=804697e8efb843e7adf9ca3badcd56e3', target='_blank'>here</a>.</li>
                     <li><b>Comma-separated value (.csv) file:</b> Upload a .csv file using the template available here. Using this method, data to import must be from the same site.</li>
                     </ul>")
                )),

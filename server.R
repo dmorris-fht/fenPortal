@@ -6,6 +6,7 @@ function(input, output, session) {
   observe(
     if(isTruthy(login$test)){
       exploreServer("exploreHydro",login$con)
+      loggers_manageServer("loggersManage",login$con,login$role)
       
       if(login$role == "cru" || login$role == "cr"){
         dips_importServer("importDips",login$con)

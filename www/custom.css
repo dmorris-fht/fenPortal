@@ -2,7 +2,7 @@
   width: 100%;
 }
 
-*:not(.glyphicon,.fas, .sidebar-toggle) {
+*:not(.glyphicon,.fas, .fa-solid, .sidebar-toggle) {
   font-family: Kreon!important
 }
 
@@ -28,6 +28,10 @@
 
 .sidebar-toggle {
   color:  #00839B !important;
+}
+
+.sidebar-toggle:hover {
+  color: white !important;
 }
 
 body h1, h2, h3, h4 {
