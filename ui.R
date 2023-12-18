@@ -1,32 +1,71 @@
 dashboardPage(
-  dashboardHeader(title = "FHT Fen Database",
+  dashboardHeader(title = "FHTfenDb",
+                  titleWidth = 250,
+                  tags$li(class = "dropdown",
+                          tags$i(class = "fa fa-user",style="display:inline-block"),
+                          style = "height:50px;margin-right:3px;padding:15px 4px;font-size:14px;vertical-align:middle;display:inline-block"
+                          ),
+                  tags$li(class = "dropdown", 
+                          textOutput("username"),
+                          style = "height:50px;margin-right:10px;padding:15px 4px;font-size:14px;vertical-align:middle;display:inline-block"
+                  ),
+                  tags$li(class = "dropdown", 
+                          actionButton("logout", "logout",
+                                       icon = icon("sign-out-alt"),
+                                       style = "height:50px;margin-right:10px;background-color:white;border:none")
+                          ),
                   tags$li(a(href = 'https://freshwaterhabitats.org.uk/',
                             img(src="FHT logo large_clear background.png", height = "40px"),
                             title = "Freshwater Habitats Trust", style = "padding: 5px 5px 5px 5px !important", target="_blank"),
                           class = "dropdown", style = "padding: 0px !important")
                   ),
   dashboardSidebar(
+    width = 250,
     sidebarMenu(id = "menu",
       useShinyjs(),
       useShinyFeedback(),
       menuItem("Home", tabName = "home", icon = icon("home")),
-      div(h4("Hydrology"),style="margin-left:10px"),
-      menuItem("Explore data", tabName  = "explore", icon = icon("chart-line")),
+      
+      menuItem("FenMap", tabName = "spatial", icon = icon("map")),
+      
+      div(h4("Data management"),style="margin-left:10px"),
+        menuItem("Sites & subsites", tabName  = "sites", icon = icon("compass")),
+        menuItem("Data sources", tabName  = "surveys", icon = icon("database")),
+      
+      div(h4("Biological data & monitoring"),style="margin-left:10px"),
+        menuItem("Search records", tabName  = "queryRecords", icon = icon("search")),
+        menuItem("New monitoring data", icon = icon("leaf"), expandedName = "importRecords",
+                 menuSubItem("Enter records", tabName = "enterRecords"),
+                 menuSubItem("Import records", tabName = "importRecords"),
+                 menuSubItem("Enter vegetation data", tabName = "importVeg"),
+                 menuSubItem("Import observations", tabName = "importObs")
+        ),
+        menuItem("Monitoring tools", icon = icon("tools"), expandedName = "monTools",
+                 menuSubItem("Plant lists", tabName = "plantLists"),
+                 menuSubItem("Vegetation data", tabName = "vegLists")
+        ),
+        menuItem("Species introductions", icon = icon("plus"), tabName = "spIntros"),
+      
+      
+      div(h4("Hydrological monitoring"),style="margin-left:10px"),
+      menuItem("Explore data", tabName  = "explore", icon = icon("tint")),
       menuItem("Manage network", icon = icon("water"), expandedName = "manageMenu",
-                 menuSubItem("Manage dipwells", tabName = "dipsManage"),
-                 menuSubItem("Manage loggers", tabName = "loggersManage"),
+               menuSubItem("Manage dipwells", tabName = "dipsManage"),
+               menuSubItem("Manage loggers", tabName = "loggersManage"),
                menuSubItem("Logger derivation points", tabName  = "loggersDer")
-               ),
+      ),
       menuItem("Import data", icon = icon("file-import"), expandedName = "importMenu",
                menuSubItem("Import weather data" ,tabName = "weatherImport"),
-                 menuSubItem("Import dip data", tabName  = "dipsImport"),
-                 menuSubItem("Import logger data", tabName  = "loggersImport")
-               ),
-      div(h4("Biological records"),style="margin-left:10px")
-      
+               menuSubItem("Import dip data", tabName  = "dipsImport"),
+               menuSubItem("Import logger data", tabName  = "loggersImport"),
+               menuSubItem("Import stratigraphy data", tabName  = "stratImport")
+               
+      )
+               
     )
   ),
   dashboardBody(
+    
     #Favicon
     tags$head(tags$link(rel="shortcut icon", href="favicon.ico")),
     
@@ -37,18 +76,40 @@ dashboardPage(
     tags$script(HTML("$('body').addClass('fixed');")),
     
     #Login page
-    loginUI("loginForm"),
+    #loginUI("loginForm"),
     
     
     tabItems(
       tabItem(tabName = "home",
               fluidRow(
-                column(12,
-                       h2("Welcome to Freshwater Habitats Trust's Fen Database")
-                       )
+                  homeUI("home")
                 )
-      )
-              ,
+      ),
+       
+      tabItem(tabName = "surveys",
+              fluidRow(
+                surveyUI("surveys")
+              )
+      ),
+      
+      tabItem(tabName = "queryRecords",
+              fluidRow(
+                queryRecordsUI("queryRecords")
+              )
+      ),
+      
+      tabItem(tabName = "enterRecords",
+              fluidRow(
+                enterRecordsUI("enterRecords")
+              )
+      ),
+      
+      tabItem(tabName = "importRecords",
+              fluidRow(
+                importRecordsUI("importRecords")
+              )
+      ),
+      
       tabItem(tabName = "explore",
                 fluidRow(
                   exploreUI("exploreHydro")
