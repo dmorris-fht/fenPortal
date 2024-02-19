@@ -58,7 +58,7 @@ logger_modal_dialog <- function(session, serial, model, purchase_date, firmware,
         style = "display: inline-block; width:90%",
         shiny::textInput(
           inputId = ns("comm_config"),
-          label = "Logger logger comms config:",
+          label = "Logger comms config:",
           value = comm_config,
           placeholder = "Input comms config"
         )
@@ -78,17 +78,14 @@ logger_modal_dialog <- function(session, serial, model, purchase_date, firmware,
     size = "s",
     easyClose = TRUE,
     footer = div(
-      class = "pull-right container",
       shiny::actionButton(
         inputId = ns("final_edit_l"),
         label = x,
-        icon = shiny::icon("edit"),
-        class = "btn-info"
+        icon = shiny::icon("edit")
       ),
       shiny::actionButton(
         inputId = ns("dismiss_modal"),
-        label = "Close",
-        class = "btn-danger"
+        label = "Close"
       )
     )
   ) %>% shiny::showModal()

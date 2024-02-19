@@ -1,5 +1,5 @@
 dashboardPage(
-  dashboardHeader(title = "FHTfenDb",
+  dashboardHeader(title = "FenPortal",
                   titleWidth = 250,
                   tags$li(class = "dropdown",
                           tags$i(class = "fa fa-user",style="display:inline-block"),
@@ -34,7 +34,7 @@ dashboardPage(
       
       div(h4("Biological data & monitoring"),style="margin-left:10px"),
         menuItem("Search records", tabName  = "queryRecords", icon = icon("search")),
-        menuItem("New monitoring data", icon = icon("leaf"), expandedName = "importRecords",
+        menuItem("Add data", icon = icon("leaf"), expandedName = "importRecords",
                  menuSubItem("Enter records", tabName = "enterRecords"),
                  menuSubItem("Import records", tabName = "importRecords"),
                  menuSubItem("Enter vegetation data", tabName = "importVeg"),
@@ -45,6 +45,7 @@ dashboardPage(
                  menuSubItem("Vegetation data", tabName = "vegLists")
         ),
         menuItem("Species introductions", icon = icon("plus"), tabName = "spIntros"),
+        menuItem("Data sharing", icon = icon("share"), tabName = "dataSharing"),
       
       
       div(h4("Hydrological monitoring"),style="margin-left:10px"),
@@ -76,7 +77,7 @@ dashboardPage(
     tags$script(HTML("$('body').addClass('fixed');")),
     
     #Login page
-    #loginUI("loginForm"),
+    loginUI("loginForm"),
     
     
     tabItems(
@@ -84,6 +85,19 @@ dashboardPage(
               fluidRow(
                   homeUI("home")
                 )
+      )
+      ,
+      
+      tabItem(tabName = "spatial",
+              fluidRow(
+                fenMapUI("fenmap")
+              )
+      ),
+      
+      tabItem(tabName = "sites",
+              fluidRow(
+                sitesUI("sites")
+              )
       ),
        
       tabItem(tabName = "surveys",
@@ -110,36 +124,56 @@ dashboardPage(
               )
       ),
       
-      tabItem(tabName = "explore",
-                fluidRow(
-                  exploreUI("exploreHydro")
-                )
-              ),
-      tabItem(tabName = "dipsManage",
+      tabItem(tabName = "plantLists",
               fluidRow(
-                #dips_manageUI("dipsManage")
+                plantListsUI("plantLists")
               )
       ),
+      
+      tabItem(tabName = "vegLists",
+              fluidRow(
+                vegListsUI("vegLists")
+              )
+      ),
+      
+      tabItem(tabName = "dataSharing",
+              fluidRow(
+                dataSharingUI("dataSharing")
+              )
+      )
+      # ,
+      # tabItem(tabName = "explore",
+      #           fluidRow(
+      #             exploreUI("exploreHydro")
+      #           )
+      #         ),
+      # tabItem(tabName = "dipsManage",
+      #         fluidRow(
+      #           #dips_manageUI("dipsManage")
+      #         )
+      # )
+      ,
       tabItem(tabName = "loggersManage",
               fluidRow(
-                loggers_manageUI("loggersManage"),
+                loggersManageUI("loggersManage"),
               )
-      ),
-      tabItem(tabName = "dipsImport",
-                fluidRow(
-                  dips_importUI("importDips")
-                )
-              ),
-      tabItem(tabName = "loggersImport",
-                fluidRow(
-                  logger_importUI("importLoggers")
-                )
-              ),
-      tabItem(tabName = "weatherImport", class = "active",
-                fluidRow(
-                  weather_importUI("weatherImport")
-                )
-              )
+      )
+      # ,
+      # tabItem(tabName = "dipsImport",
+      #           fluidRow(
+      #             dips_importUI("importDips")
+      #           )
+      #         ),
+      # tabItem(tabName = "loggersImport",
+      #           fluidRow(
+      #             logger_importUI("importLoggers")
+      #           )
+      #         ),
+      # tabItem(tabName = "weatherImport", class = "active",
+      #           fluidRow(
+      #             weather_importUI("weatherImport")
+      #           )
+      #         )
     )
     
     

@@ -5,7 +5,9 @@ function get_id(clicked_id) {
     Shiny.setInputValue("surveys-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("queryRecords-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("enterRecords-current_id", clicked_id, {priority: "event"});
-}
+    Shiny.setInputValue("importRecords-current_id", clicked_id, {priority: "event"});
+    Shiny.setInputValue("dataSharing-current_id", clicked_id, {priority: "event"});
+  }
 
 // Login controls
 
@@ -14,6 +16,14 @@ $(document).keyup(function(event) {
         $("#loginForm-loginButton").click();
     }
 });
+
+$("#loginForm-loginButton").click(
+  function(){
+    $("#username").html(
+      $("#loginForm-username").val()
+    )  
+  }
+)
 
 // Record entry controls
 
@@ -32,4 +42,3 @@ $(document).keydown(function(e) {
     }
     down[e.keyCode] = false;
 });
-

@@ -49,7 +49,7 @@ logger_installs_modal_dialog <- function(session, install, install_date, install
         shiny::textAreaInput(
           inputId = ns("install_notes"),
           label = "Logger installation notes:",
-          value = install_notes,
+          value =  ifelse(!is.na(install_notes),install_notes,""),
           placeholder = "Add any relevant notes",
           resize = "vertical"
         )
@@ -80,7 +80,7 @@ logger_installs_modal_dialog <- function(session, install, install_date, install
           shiny::textAreaInput(
             inputId = ns("remove_notes"),
             label = "Logger installation removal notes:",
-            value = remove_notes,
+            value = ifelse(!is.na(remove_notes),remove_notes,""),
             placeholder = "Add any relevant notes",
             resize = "vertical"
           )
@@ -94,13 +94,11 @@ logger_installs_modal_dialog <- function(session, install, install_date, install
       shiny::actionButton(
         inputId = ns("final_edit_li"),
         label = x,
-        icon = shiny::icon("edit"),
-        class = "btn-info"
+        icon = shiny::icon("edit")
       ),
       shiny::actionButton(
         inputId = ns("dismiss_modal"),
-        label = "Close",
-        class = "btn-danger"
+        label = "Close"
       )
     )
   ) %>% shiny::showModal()

@@ -124,10 +124,17 @@ enterRecordsUI <- function(id){
                                       ) %>% tagAppendAttributes(class = 'compact')
                                   ),
                                   div(style="float:left;width:70%",
-                                      textInput(
+                                      selectizeInput(
                                         inputId = ns("status"),
                                         label = "Status",
-                                        value = NULL
+                                        choices = choices_status,
+                                        selected = "",
+                                        multiple = TRUE,
+                                        options = list(
+                                          maxItems = 1,
+                                          placeholder = 'None',
+                                          onInitialize = I('function() { this.setValue(""); }')
+                                        )
                                       ) %>% tagAppendAttributes(class = 'compact')
                                   )
                                 ) 
@@ -405,7 +412,7 @@ enterRecordsUI <- function(id){
                         actionButton(
                           inputId = ns("submit_records"),
                           label = "Submit records",
-                          icon = icon("cloud-upload-alt")
+                          icon = icon("upload")
                         )
                     )
                   ),
@@ -426,37 +433,18 @@ enterRecordsUI <- function(id){
     )
 }
 
-enterRecordsServer <- function(id, con, username) {
+enterRecordsServer <- function(id, login, tables) {
   moduleServer(
     id,
     function(input, output, session) {
       
-      # Form controls ----
       ## Initialisation ----
       
-      site <- dbGetQuery(con, "SELECT id, site, county FROM spatial.fen_sites ORDER BY site")
-      choices_site <- site$id
-      names(choices_site) <- paste0(site$site, " [",site$county, "]")
-
-      choices_site_1 <- site$id
-      names(choices_site_1) <- site$site
+      user <- login$username
+      password <- login$password
+      con <- poolCheckout(login$con) # FIX THIS
       
-      subsite <- dbGetQuery(con, "SELECT id, site, subsite FROM spatial.fen_subsites ORDER BY site, subsite")
-      choices_subsite <- reactive({
-        if(isTruthy(input$site)){
-          c <- subsite[subsite$site == input$site,c("id")]
-          names(c) <- subsite[subsite$site == input$site,c("subsite")]
-        }
-        else{
-          c <- c("")
-        }
-        return(c)
-      })
-      
-      survey <- dbGetQuery(con, "SELECT id, survey FROM records.surveys ORDER BY survey")
-      choices_survey <- survey$id
-      names(choices_survey) <- survey$survey
-
+      # Update input boxes once tables loaded
       updateSelectizeInput(session,
                            "taxon_nbn",
                            choices=choices_uksi, 
@@ -465,30 +453,80 @@ enterRecordsServer <- function(id, con, username) {
                            options = list(
                              maxItems = 1,
                              onInitialize = I('function() { this.setValue(""); }')
-                             )
                            )
-      updateSelectizeInput(session,
-                        "site",
-                        choices=choices_site, 
-                        selected = "",
-                        server = FALSE,
-                        options = list(
-                          maxItems = 1,
-                          onInitialize = I('function() { this.setValue(""); }')
-                        )
-                        )
+      )
       
-      updateSelectizeInput(session,
-                           "survey",
-                           choices=choices_survey,
-                           selected = "",
-                           server = FALSE,
-                           options = list(
-                             maxItems = 1,
-                             onInitialize = I('function() { this.setValue(""); }')
-                           )
-                           )
-
+      choices_site <- reactive({
+        if(isTruthy(tables$sites)){
+          c <- tables$sites$id
+          names(c) <- paste0(tables$sites$site, " [",tables$sites$county, "]")
+        }
+        else{
+          c <- c("")
+        }
+        return(c)
+      })
+      
+      observe({
+        updateSelectizeInput(session,
+                             "site",
+                             choices=choices_site(), 
+                             selected = "",
+                             server = FALSE,
+                             options = list(
+                               maxItems = 1,
+                               onInitialize = I('function() { this.setValue(""); }')
+                             )
+        )
+      })
+      
+      choices_site_1 <- reactive({
+        if(isTruthy(tables$sites)){
+          c <- tables$sites$id
+          names(c) <- tables$sites$site
+        }
+        else{
+          c <- c("")
+        }
+        return(c)
+      })
+      
+      choices_survey <- reactive({
+        if(isTruthy(tables$surveys)){
+          c <- tables$surveys$id
+          names(c) <- tables$surveys$survey
+        }
+        else{
+          c <- c("")
+        }
+        return(c)
+      })
+      
+      observe({
+        updateSelectizeInput(session,
+                             "survey",
+                             choices=choices_survey(),
+                             selected = "",
+                             server = FALSE,
+                             options = list(
+                               maxItems = 1,
+                               onInitialize = I('function() { this.setValue(""); }')
+                               )
+                             )
+      })
+      
+      choices_subsite <- reactive({
+        if(isTruthy(input$site)){
+          req(tables$subsites)
+          c <- tables$subsites[tables$subsites$site == input$site,c("id")]
+          names(c) <- tables$subsites[tables$subsites$site == input$site,c("subsite")]
+        }
+        else{
+          c <- c("")
+        }
+        return(c)
+      })
+      
       observe({
         if(length(choices_subsite()) > 0){
           updateSelectizeInput(
@@ -690,7 +728,11 @@ enterRecordsServer <- function(id, con, username) {
       iv$add_rule("survey",sv_required())
       iv$add_rule("gridref",function(value){
         
-        v <- validate_gf(input$gridref, s = as.numeric(input$site), ss = as.numeric(input$subsite), con = con)
+        v <- validate_gf(input$gridref, 
+                         s = as.numeric(input$site), 
+                         ss = as.numeric(input$subsite),
+                         sites0 = tables$sites0,
+                         subsites0 = tables$subsites0)
         
         if(v$error == 1 && isTruthy(input$gridref)){
           v$message
@@ -700,24 +742,19 @@ enterRecordsServer <- function(id, con, username) {
       
       gfv <- reactive({
         req(input$site)
-        
-        return(validate_gf(input$gridref, s = as.numeric(input$site), ss = as.numeric(input$subsite), con = con))
+        return(validate_gf(input$gridref, 
+                           s = as.numeric(input$site), 
+                           ss = as.numeric(input$subsite),
+                           sites0 = tables$sites0,
+                           subsites0 = tables$subsites0))
       })
-      
-      invalid_gf <- function(){
-        ns <- session$ns
-        modalDialog(
-          textOutput(ns("gf_error"))
-          , footer=NULL,size="s",easyClose=TRUE,fade=TRUE
-        )
-      }
       
       # Reactive to hold entered records etc. ----
       d <- reactiveValues(
         r = NA,
         mode = "new",
         del_row = NA,
-        data = global_records[global_records$user == username,]
+        data = global_records[global_records$user == user,]
       )
       
       #Data table definition ----
@@ -731,14 +768,14 @@ enterRecordsServer <- function(id, con, username) {
           shiny::isolate(d$data)
           
           x <- d$data[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
-          colnames(x) <-  c("Taxon","Site","Subsite","Gridref","Date","")
-          
+        
           return(x)
         }
         ,
         escape = F,
         rownames = FALSE,
         selection = 'single',
+        colnames =  c("Taxon","Site","Subsite","Gridref","Date",""),
         options = list(processing = TRUE,
                        columnDefs = list(
                           list(orderable = FALSE, targets = c(5)),
@@ -840,6 +877,7 @@ enterRecordsServer <- function(id, con, username) {
             a <- 1
           }
           
+          d$data[a,c("verification")] <- 0
           d$data[a,c("site_record")] <- blank(input$site_record)
           d$data[a,c("site")] <- blank(input$site)
           d$data[a,c("subsite")] <- blank(input$subsite)
@@ -860,15 +898,15 @@ enterRecordsServer <- function(id, con, username) {
           d$data[a,c("end_year")] <- blank(input$end_year) 
           d$data[a,c("start_month")] <- blank(input$start_month) 
           d$data[a,c("end_month")] <- blank(input$end_month)
-          d$data[a,c("site_name")] <- names(choices_site_1)[which(choices_site_1 == as.numeric(input$site))]
+          d$data[a,c("site_name")] <- names(choices_site_1())[which(choices_site_1() == as.numeric(input$site))]
           d$data[a,c("subsite_name")] <- blank(names(ss)[which(ss == as.numeric(input$subsite))])
           d$data[a,c("taxon_name")] <- names(choices_uksi_1)[which(choices_uksi_1 == input$taxon_nbn)]
-          d$data[a,c("survey_name")] <- names(choices_survey)[which(choices_survey == as.numeric(input$survey))]
+          d$data[a,c("survey_name")] <- names(choices_survey())[which(choices_survey() == as.numeric(input$survey))]
           d$data[a,c("guid")] <- UUIDgenerate()
           d$data[a,c("id")] <- a
           d$data[a,c("Buttons")] <- del_btns(c(a),"records")
           d$data[a,c("in_db")] <- 0
-          d$data[a,c("user")] <- username
+          d$data[a,c("user")] <- user
         }
         if(d$mode == "edit"){
           
@@ -895,10 +933,10 @@ enterRecordsServer <- function(id, con, username) {
           d$data[a,c("end_year")] <- blank(input$end_year) 
           d$data[a,c("start_month")] <- blank(input$start_month) 
           d$data[a,c("end_month")] <- blank(input$end_month)
-          d$data[a,c("site_name")] <- names(choices_site_1)[which(choices_site_1 == as.numeric(input$site))]
+          d$data[a,c("site_name")] <- names(choices_site_1())[which(choices_site_1() == as.numeric(input$site))]
           d$data[a,c("subsite_name")] <- blank(names(ss)[which(ss == as.numeric(input$subsite))])
           d$data[a,c("taxon_name")] <- names(choices_uksi_1)[which(choices_uksi_1 == input$taxon_nbn)]
-          d$data[a,c("survey_name")] <- names(choices_survey)[which(choices_survey == as.numeric(input$survey))]
+          d$data[a,c("survey_name")] <- names(choices_survey())[which(choices_survey() == as.numeric(input$survey))]
           
           #Reset mode
           d$mode <- "new"
@@ -1045,7 +1083,7 @@ enterRecordsServer <- function(id, con, username) {
       }
       
       observeEvent(input$unmark_record_yes,{
-        d$data[which(d$data$id == d$del_row),c("verification")] <- NA
+        d$data[which(d$data$id == d$del_row),c("verification")] <- 0
         d$data[which(d$data$id == d$del_row),c("Buttons")] <- del_btns(d$del_row, "records")
         
         clear_form()
@@ -1106,26 +1144,57 @@ enterRecordsServer <- function(id, con, username) {
       }
       
       observeEvent(input$submit_records_yes,{
-        insert <- pgWriteGeom(con, 
-                              name = c("records","records"),
-                              data.obj = d$data[,1:28],
-                              partial.match = TRUE,
-                              overwrite = FALSE,
-                              upsert.using = "guid"
-        )
-        d$data$in_db <- 1
-        removeModal()
-      })
+        future_promise({
+          showModal(
+            modalDialog(
+              div(style="text-align:left",
+                  tags$h4("Uploading",class="loading"),
+              )
+              ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE
+            )
+          )
+          
+          insert <- pgWriteGeom(con, 
+                                name = c("records","records"),
+                                data.obj = d$data[,1:28],
+                                partial.match = TRUE,
+                                overwrite = FALSE,
+                                upsert.using = "guid"
+                                )
+          })%...>% (function(insert) {
+            
+            if(insert == TRUE){
+              d$data$in_db <- 1
+              showModal(
+                modalDialog(
+                  div(style="text-align:center",
+                      tags$h4("Success!")
+                  )
+                  ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+                )
+              )
+            }else{
+              showModal(
+                modalDialog(
+                  div(style="text-align:center",
+                      tags$h4("Upload failed")
+                  )
+                  ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+                )
+              )
+            }
+          })
+        })
       
       # Cache record table in global object ----
       
       observe({
         x <- d$data
         if(nrow(x) == 0){
-            global_records <<- global_records[-c(which(global_records$user == username)),]
+            global_records <<- global_records[-c(which(global_records$user == user)),]
           }
         else{
-            global_records <<- global_records[-c(which(global_records$user == username)),]
+            global_records <<- global_records[-c(which(global_records$user == user)),]
             global_records <<- rbind(global_records,x)
           }
       })

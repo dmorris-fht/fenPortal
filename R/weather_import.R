@@ -40,7 +40,6 @@ weather_importServer <- function(id,con) {
       import <- reactiveValues(data = data.frame(NA,NA))
       
       observe({
-        
         #Import csv and load data table
         req(input$weatherCsv)
         file <- input$weatherCsv

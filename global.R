@@ -1,50 +1,80 @@
+# Libraries ----
 library(shiny)
 library(shinyjs)
 library(shinydashboard)
 library(shinycssloaders)
 library(DT)
-library(shinyvalidate) # NEEDS INSTALLING ON SERVER 
+library(shinyvalidate)
+
+library(billboarder)
 
 library(httr)
 
-library(leaflet)
+library(leaflet) 
+library(leaflet.extras) 
 library(sf)
 
-library(htmlTable) #???
+library(htmlTable) # Used in hydro explore module
 
-library(jsonlite)
 library(uuid)
-
+library(zip)
 library(ggplot2)
-library(scales) #?
-library(lubridate) #?
-library(RColorBrewer) #? For hydro graphs?
-library(plotly)
+library(lubridate)
+library(RColorBrewer) # For plots in hydro explore module
+library(plotly) # For plots in hydro explore module
 library(hexView)
-library(readr)
 library(tidyverse) #?
 library(dplyr)
 library(shinyWidgets)
-library(shinyFeedback) #?
+library(shinyFeedback) 
 library(shinyTime) #?
-library(future) #?
-library(promises) #?
-library(geojsonsf) # NEEDS INSTALLING ON SERVER
+library(future) 
+library(promises)
+library(geojsonsf) #?
 
 library(RPostgreSQL) # NEEDS INSTALLING ON SERVER
-library(RPostgres)
 library(rpostgis)
 library(DBI) # Don't need this too?
 library(pool)
 
+# No longer in use
+# library(jsonlite)
+library(scales) #?
+library(readr)
+library(RPostgres)
 
-# Misc functions ----
-
+#Functions to handle missing values ----
 blank <- function(x){ifelse(!isTruthy(x),NA,x)}
+
+na <- function(x){
+  y <- ifelse(!isTruthy(x),
+              "NULL",
+              if(class(x) == "character"){
+                paste0("'",x,"'")
+              }
+  )
+  return(y)
+}
+
+null <- function(x){
+  ifelse(!isTruthy(x),NULL,x)
+}
+
+compareNA <- function(v1,v2) {
+  same <- (v1 == v2) | (is.na(v1) & is.na(v2))
+  same[is.na(same)] <- FALSE
+  return(same)
+}
 
 concatenate_na.rm <- function(x){
   paste(x[!is.na(x)], collapse = " ")
 }
+
+paste_na.rm <- function(x,s){
+  paste(x[!is.na(x)], collapse = s)
+}
+
+# Functions for sql strings ----
 
 con_sql_string <- function(v){
   return(paste0("('",paste(v,collapse="','"),"')"))
@@ -70,18 +100,25 @@ sql_in <- function(x,v){
   }
 }
   
+sql_date <- function(y,x0,x1){
+  if(shiny::isTruthy(x0) && shiny::isTruthy(x1)){
+    w <- paste0(y, " BETWEEN '", date_check(x0,0)$d, "' AND '", date_check(x1,1)$d,"'")
+  }
+  if(!shiny::isTruthy(x0) && shiny::isTruthy(x1)){
+    w <- paste0(y, " <= '", date_check(x1,1)$d,"'")
+  }
+  if(shiny::isTruthy(x0) && !shiny::isTruthy(x1)){
+    w <- paste0(y, " >= '", date_check(x0,0)$d,"'")
+  }
+  if(!shiny::isTruthy(x0) && !shiny::isTruthy(x1)){
+    w <- "(1=1)"
+  }
+  return(w)
+  
+}
+
 date_correction <- function(x){as.POSIXct(x / 1000, origin="1970-01-01", tz="GMT")}
 date_format <- function(x){as.Date(x,format="%Y-%m-%d",origin="1970-01-01")} # Do I need?
-
-na <- function(x){
-  y <- ifelse(!isTruthy(x),
-              "NULL",
-                if(class(x) == "character"){
-                  paste0("'",x,"'")
-                }
-              )
-  return(y)
-}
 
 null_date <- function(x, y){
   ifelse(isTruthy(x), 
@@ -97,8 +134,27 @@ null_date_val <- function(x){
          paste0("TO_DATE('", x ,"','yyyy-mm-dd')"),
          "NULL")
 }
+null_timestamp_val <- function(x){
+  ifelse(isTruthy(x),
+         paste0("TO_TIMESTAMP('", x ,"','YYYY-MM-DD HH24:MI:SS')"),
+         "NULL")
+}
 null_text_val <- function(con, x){ifelse(isTruthy(x) && nchar(x) >0,paste0("'",postgresqlEscapeStrings(con,x),"'"),"NULL")}
 null_num_val <- function(x){ifelse(isTruthy(x),x,"NULL")}
+
+# Date functions ----
+
+year_check <- function(x){
+  suppressWarnings(
+    (!is.na(as.numeric(x)) && as.numeric(x) %% 1 == 0 && as.numeric(x) > 1600 && as.numeric(x) < 2100) || !isTruthy(x)
+  )
+  }
+
+month_check <- function(x){
+  suppressWarnings(
+    (!is.na(as.numeric(x)) && as.numeric(x) %% 1 == 0 && as.numeric(x) > 0 && as.numeric(x) < 13) || !isTruthy(x)
+  )
+}
 
 year_range <- function(v){
   x <-as.character(v[1])
@@ -122,14 +178,76 @@ year_range <- function(v){
   }
 }
 
-validate_gf <- function(g,s,ss,con){
+start_end <- function(s,e){
+  if(!is.na(s) && !is.na(e)){
+    return(paste0(s,"-",e))
+  }
+  if(!is.na(s) && is.na(e)){
+    return(paste0(s,"-"))
+  }
+  if(is.na(s) && !is.na(e)){
+    return(paste0("-",e))
+  }
+}
+
+date_range <- function(d,s,e,ms,me,ys,ye,ss,se,sys,sye){
+  if(!is.na(d)){
+    return(format(d,"%d/%m/%Y"))
+  }
+  if(!is.na(s) || !is.na(e)){
+    return(start_end(format(s,"%d/%m/%Y"),format(e,"%d/%m/%Y")))
+  }
+  if(!is.na(ms) || !is.na(me)){
+    if(is.na(me)){
+      return(paste0(as.Date(ISOdate(ys, ms, 1)),"-",as.Date(ISOdate(ys, ms+1, 1))-1))
+    }
+    if(is.na(ms)){
+      return(paste0(as.Date(ISOdate(ye, me, 1)),"-",as.Date(ISOdate(ye, me+1, 1))-1))
+    }
+    return(paste0(as.Date(ISOdate(ys, ms, 1)),"-",as.Date(ISOdate(ye, me+1, 1))-1))
+  }
+  if(!is.na(ys) || !is.na(ye)){
+    return(start_end(ys,ye))
+  }
+  if(!is.na(ss) || !is.na(se)){
+    return(start_end(format(ss,"%d/%m/%Y"),format(se,"%d/%m/%Y")))
+  }
+  if(!is.na(sys) || !is.na(sye)){
+    return(start_end(sys,sye))
+  }
+}
+
+# Validation functions ----
+
+isNumeric <- function(x){
+  tryCatch({
+    !grepl("\\D", x) 
+  },
+  error = function(err){FALSE})
+}
+
+isGridref <-function(g){
   g <- toupper(gsub(" ","",g))
-  tryCatch(
-    if(as.numeric(substr(g,3,nchar(g)))>0){
-      t <- "pass"
-    }, error = function(e){t <- "fail"}
-  )
-  
+
+  if(!isTruthy(g)){
+    return(NA)
+  }
+  if(
+    nchar(g) < 13 && nchar(g) > 3 && nchar(g) %% 2 == 0 && substr(g,1,2) %in% squares_100k$gridref && isNumeric(substr(g,3,nchar(g)))
+    ){
+    return(TRUE)
+  } # 100km, 10km, 1km, 100m, 10m, 1m grid ref
+  if(
+    nchar(g) == 5 && isNumeric(substr(g,3,4)) && substr(g,1,2) %in% squares_100k$gridref && substr(g,5,5) %in% toupper(letters[c(1:14,16:25)])
+  ){
+    return(TRUE)
+  } # tetrad
+  return(FALSE)
+}
+
+validate_gf <- function(g,s,ss,sites0,subsites0){
+  g <- toupper(gsub(" ","",g))
+
   results <- list("error" = 0, "message"="gridref okay")
 
   if(!isTruthy(g)){
@@ -138,58 +256,71 @@ validate_gf <- function(g,s,ss,con){
     
     return(results)
   }
-  if(nchar(g) > 12 || nchar(g) < 4 || nchar(g) %% 2 == 1 || !(substr(g,1,2) %in% squares_100k$gridref) || t == "fail"){
+  if(!isGridref(g)){
     results$error <- 1
     results$message <- "Invalid grid reference format"
     
     return(results)
   }
   
-  res <- nchar(g)*0.5 -1
-  r <- 10^(5-res)
+  if(isTruthy(s) && !(s %in% sites0[st_is_empty(sites0),]$id)){
+    if(nchar(g) != 5){ # Normal gridref
+      res <- nchar(g)*0.5 -1
+      r <- 10^(5-res)
+      e <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("x")]
+      n <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("y")]
+      x0 <- r*as.numeric(paste0(e,substr(g,3,2+res)))
+      y0 <- r*as.numeric(paste0(n,substr(g,3+res,2+2*res)))
+      x1 <- x0 + r
+      y1 <- y0 + r
+    }
+    if(nchar(g) == 5){ # Tetrads
+      r <- 2000
+      e <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("x")]
+      n <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("y")]
+      x0 <- as.numeric(paste0(e,substr(g,3,3),colnames(dinty)[which(dinty == substr(g,5,5),arr.ind = TRUE)[2]],"000"))
+      y0 <- as.numeric(paste0(n,substr(g,4,4),rownames(dinty)[which(dinty == substr(g,5,5),arr.ind = TRUE)[1]],"000"))
+      x1 <- x0 + 2000
+      y1 <- y0 + 2000
+    }
   
-  e <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("x")]
-  n <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("y")]
+    #ls <- paste0("LINESTRING(",x0," ",y0,",",x0," ",y1,",",x1," ",y1,",",x1," ",y0,",",x0," ",y0,")")
+    
+    l <- matrix(c(x0,y0,x1,y0,x1,y1,x0,y1,x0,y0),ncol = 2, byrow = TRUE)
+    gf <- st_polygon(list(l))
   
-  x0 <- r*as.numeric(paste0(e,substr(g,3,2+res)))
-  y0 <- r*as.numeric(paste0(n,substr(g,3+res,2+2*res)))
-  x1 <- x0 + r
-  y1 <- y0 + r
-  ls <- paste0("LINESTRING(",x0," ",y0,",",x0," ",y1,",",x1," ",y1,",",x1," ",y0,",",x0," ",y0,")")
-
-  if(isTruthy(s)){
-    q_s <- dbGetQuery(con,
-                      paste0(
-                        "SELECT id FROM spatial.fen_sites WHERE ST_Intersects(ST_Polygon('",
-                        ls,
-                        "'::geometry, 27700),ST_buffer(geom,10)) AND id =",
-                        s
-                        )
-                      )
+    q_s <- sites0[unlist(st_intersects(st_buffer(gf,10),sites0)),c("id")]
+    
+    # q_s <- dbGetQuery(con,
+    #                   paste0(
+    #                     "SELECT id FROM spatial.fen_sites WHERE ST_Intersects(ST_Polygon('",
+    #                     ls,
+    #                     "'::geometry, 27700),ST_buffer(geom,10)) AND id =",
+    #                     s
+    #                     )
+    #                   )
     if(!(s %in% q_s$id)){
       results$error <- 1
       results$message <- "Grid reference not within 10m of given site"
-      
-      return(results)
     }
-  }
-  if(isTruthy(ss)){
-    geom_ss <- dbGetQuery(con,paste0("SELECT id FROM spatial.fen_subsites WHERE geom IS NOT NULL AND id =",ss))
-    q_ss <- dbGetQuery(con,
-                      paste0(
-                        "SELECT id FROM spatial.fen_subsites WHERE ST_Intersects(ST_Polygon('",
-                        ls,
-                        "'::geometry, 27700),ST_buffer(geom,10)) AND id =",
-                        ss
-                      )
-    )
-    if(nrow(geom_ss) > 0 &&!(ss %in% q_ss$id)){
-      results$error <- 1
-      results$message <- "Grid reference not within 10m of given subsite"
-      
-      return(results)
+  
+    if(isTruthy(ss) && !(ss %in% subsites0[st_is_empty(subsites0),]$id)){
+      q_ss <- subsites0[unlist(st_intersects(st_buffer(gf,10),subsites0)),c("id")]
+      # geom_ss <- dbGetQuery(con,paste0("SELECT id FROM spatial.fen_subsites WHERE geom IS NOT NULL AND id =",ss))
+      # q_ss <- dbGetQuery(con,
+      #                   paste0(
+      #                     "SELECT id FROM spatial.fen_subsites WHERE ST_Intersects(ST_Polygon('",
+      #                     ls,
+      #                     "'::geometry, 27700),ST_buffer(geom,10)) AND id =",
+      #                     ss
+      #                   )
+      #                   )
+      if(!(ss %in% q_ss$id)){
+        results$error <- 1
+        results$message <- "Grid reference not within 10m of given subsite"
+      }
     }
-  }
+}
   
   return(results)
 }
@@ -234,6 +365,7 @@ like_string <- function(x,s){
 }
 
 like_vec <- function(x,v){
+  v <- toupper(gsub(" ","",v))
   if(isTruthy(v)){
     return(paste("(",lapply(v,function(y){like_string(x,y)}),")",collapse = " OR "))
   }else{
@@ -241,43 +373,110 @@ like_vec <- function(x,v){
   }
 }
 
+IsDate <- function(x, date.format = "%d/%m/%y") {
+tryCatch(
+  {!is.na(as.Date(x, date.format))
+    },  
+         error = function(err) {FALSE})  
+}
+IsYear <- function(x){
+  tryCatch({
+    !grepl("\\D", x) && nchar(x) == 4
+    },
+           error = function(err){FALSE})
+}
 
 date_check <- function(x,m){
-  d <- as.Date(x, "%d/%m/%Y")
-
-  if(as.numeric(x)>0 && nchar(x) == 4){
-    if(is.na(d)){
-      if(m==0){
-        d <- as.Date(ISOdate(x, 1, 1))
-      }
-      if(m==1){
-        d <- as.Date(ISOdate(x, 12, 31))
+  d <- NA
+  error <- FALSE
+  if(IsDate(x,date.format = "%d/%m/%Y")){
+    d <- as.Date(x, "%d/%m/%Y")
+    error <- TRUE
+  }else{
+    if(IsYear(x)){
+      error <- TRUE
+      if(is.na(d)){
+        if(m==0){
+          d <- as.Date(ISOdate(x, 1, 1))
+        }
+        if(m==1){
+          d <- as.Date(ISOdate(x, 12, 31))
+        }
       }
     }
   }
   
-  return(list("error" = (as.numeric(x)>0 && nchar(x) == 4) || !is.na(d), "d" = d))
+  return(list("error" = error, "d" = d))
 }
 
-sql_date <- function(y,x0,x1){
-  if(shiny::isTruthy(x0) && shiny::isTruthy(x1)){
-    w <- paste0(y, " BETWEEN '", date_check(x0,0)$d, "' AND '", date_check(x1,1)$d,"'")
-  }
-  if(!shiny::isTruthy(x0) && shiny::isTruthy(x1)){
-    w <- paste0(y, " <= '", date_check(x1,1)$d,"'")
-  }
-  if(shiny::isTruthy(x0) && !shiny::isTruthy(x1)){
-    w <- paste0(y, " >= '", date_check(x0,0)$d,"'")
-  }
-  if(!shiny::isTruthy(x0) && !shiny::isTruthy(x1)){
-    w <- "(1=1)"
-  }
-  return(w)
+dinty <- data.frame(c("A","B","C","D","E"),
+                    c("F","G","H","I","J"),
+                    c("K","L","M","N","P"),
+                    c("Q","R","S","T","U"),
+                    c("V","W","X","Y","Z"))
+colnames(dinty) <- c("0","2","4","6","8")
+rownames(dinty) <- c("0","2","4","6","8")
+
+gf_sf <- function(g){
+    g <- toupper(gsub(" ","",g))
+    
+    if(isGridref(g) == FALSE || !isTruthy(g)){
+      return(NA)
+    }
+    else{
+      if(nchar(g) != 5){
+        res <- nchar(g)*0.5 -1
+        r <- 10^(5-res)
+        e <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("x")]
+        n <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("y")]
+        x0 <- r*as.numeric(paste0(e,substr(g,3,2+res)))
+        y0 <- r*as.numeric(paste0(n,substr(g,3+res,2+2*res)))
+        x1 <- x0 + r
+        y1 <- y0 + r
+        l <- matrix(c(x0,y0,x1,y0,x1,y1,x0,y1,x0,y0),ncol = 2, byrow = TRUE)
+        gf <- st_polygon(list(l))
+        return(gf)
+      }
+      if(nchar(g) == 5){
+        r <- 2000
+        e <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("x")]
+        n <- squares_100k[which(squares_100k$gridref == substr(g,1,2)),c("y")]
+        x0 <- as.numeric(paste0(e,substr(g,3,3),colnames(dinty)[which(dinty == substr(g,5,5),arr.ind = TRUE)[2]],"000"))
+        y0 <- as.numeric(paste0(n,substr(g,4,4),rownames(dinty)[which(dinty == substr(g,5,5),arr.ind = TRUE)[1]],"000"))
+        x1 <- x0 + 2000
+        y1 <- y0 + 2000
+        l <- matrix(c(x0,y0,x1,y0,x1,y1,x0,y1,x0,y0),ncol = 2, byrow = TRUE)
+        gf <- st_polygon(list(l))
+        return(gf)
+      }
+      }
+}
+
+taxon_lookup <- function(t){
   
 }
 
+
+import_validation <- function(x){
+  prod(
+    isGridref(x[[1]]), # gridref
+    IsDate(x[[2]]) || !isTruthy(x[[2]]), # date
+    IsDate(x[[3]]) || !isTruthy(x[[3]]), # start date
+    IsDate(x[[4]]) || !isTruthy(x[[4]]), # end date
+    (IsDate(x[[3]]) && IsDate(x[[4]]) && (as.Date(x[[3]], "%d/%m/%Y") <= as.Date(x[[4]], "%d/%m/%Y"))) || !isTruthy(x[[3]]) || !isTruthy(x[[4]]), # date range
+    year_check(x[[5]]), # start year
+    year_check(x[[6]]), # end year
+    (year_check(x[[5]]) && year_check(x[[6]]) && as.numeric(x[[5]]) <= as.numeric(x[[6]])) || !isTruthy(x[[5]]) || !isTruthy(x[[6]]), # year range
+    month_check(x[[7]]), # start month
+    month_check(x[[8]]), # end month
+    (month_check(x[[7]]) && month_check(x[[8]]) && ( (x[[5]] == x[[6]] && as.numeric(x[[7]]) <= as.numeric(x[[8]])) ||  x[[5]] != x[[6]] ) ) || !isTruthy(x[[7]]) || !isTruthy(x[[8]]), # month range
+    isTruthy(x[[1]]) || isTruthy(x[[9]]), # gridref and site not both null
+    isTruthy(x[[10]]) || isTruthy(x[[11]]) # nbn tvk or taxon name given
+    )
+}
+
 # Connection function ----
-drv <- dbDriver("PostgreSQL")
+drv <- dbDriver("PostgreSQL", max.con = 100)
 fenDb <- function(u, p){
             dbPool(drv, 
               user = u, 
@@ -285,6 +484,15 @@ fenDb <- function(u, p){
               host = "data-fht.postgres.database.azure.com", 
               port = 5432, 
               dbname = "fen_database")
+}
+
+fenDb0 <- function(u, p){
+  dbConnect(drv, 
+         user = u, 
+         password = p,
+         host = "data-fht.postgres.database.azure.com", 
+         port = 5432, 
+         dbname = "fen_database")
 }
 
 fenDbTest <- function(u, p){
@@ -353,6 +561,23 @@ del_btns <- function(x,n){
                    <button title = "Delete record" class="btn btn-default action-button row-btn action_button inf" id="', n ,'_del_',
                      .x, '" type="button" onclick=get_id(this.id)><i class="fas fa-trash-alt"></i></button></div>'
                    ))
+}
+
+
+edit_del_btns <- function(x,n){
+  x %>% purrr::map_chr(~
+                         paste0(
+                           '<div class = "btn-group">
+                           <button class="btn btn-default action-button row-btn action_button cru" id="', n ,'_edit_',
+                           .x, '" type="button" onclick=get_id(this.id)><i class="fas fa-pen"></i></button>
+                   <button title = "Delete record" class="btn btn-default action-button row-btn action_button inf" id="', n ,'_del_',
+                           .x, '" type="button" onclick=get_id(this.id)><i class="fas fa-trash-alt"></i></button></div>'
+                         ))
+}
+
+add_edit_del_btns <- function(d,n){
+  x <- edit_del_btns(d[,c("id")],n)
+  y <- d %>% dplyr::bind_cols(tibble("Buttons" = x))
 }
 
 val_btns <- function(x,n){
@@ -552,20 +777,18 @@ import_agol <- function(con, u, w, g, a, s, t){
   }
 }
 # Global database tables and lookups ----
-con_global <- fenDb("fen_guest","Alkal1n3F3ns!")
-  
+
 #uksi
-uksi_full <-read.csv("./www/uksi.csv", header = TRUE)
+uksi_full <- read.csv("./www/uksi.csv", header = TRUE)
+uksi_rec <- read.csv("./www/uksi_rec.csv", header = TRUE)
 
 # Taxon names with qualifiers and authorities
-uksi <- read.csv("./www/uksi_full_names.csv",header = TRUE)
-choices_uksi <- uksi$tvk
-names(choices_uksi) <- uksi$full_name
+choices_uksi <- uksi_full$nbn_taxon_version_key
+names(choices_uksi) <- uksi_full$full_name
 
 # Taxon names with qualifiers and without authorities
-uksi_1 <- read.csv("./www/uksi_names.csv",header = TRUE)
-choices_uksi_1 <- uksi_1$tvk
-names(choices_uksi_1) <- uksi_1$name
+choices_uksi_1 <- uksi_full$nbn_taxon_version_key
+names(choices_uksi_1) <- uksi_full$name
 
 # Taxon groups
 tgps <- read.csv("./www/taxon_groups.csv",header= TRUE)
@@ -575,7 +798,10 @@ choices_tgps <- tgps$x
 choices_fenspp <- c(0,1,2)
 names(choices_fenspp) <- c("Select an option","All fen species", "Alkaline fen species")
 
-fspp <- dbGetQuery(con_global, "SELECT nbn_taxon_version_key_for_recommended_name, taxon_latest, alkaline_fen_oxon AS alkaline_fen FROM lookups.fen_spp ORDER BY taxon_latest")
+con_global <- fenDb("fenportal","Alkal1n3F3ns!")
+con_global0 <- poolCheckout(con_global)
+
+fspp <- dbGetQuery(con_global0, "SELECT nbn_taxon_version_key_for_recommended_name, taxon_latest, alkaline_fen_oxon AS alkaline_fen FROM lookups.fen_spp ORDER BY taxon_latest")
 choices_fspp <- fspp$nbn_taxon_version_key_for_recommended_name
 names(choices_fspp) <- fspp$taxon_latest
 string_fspp <- paste0("('",paste(choices_fspp,collapse="','"),"')")
@@ -583,12 +809,27 @@ string_fspp <- paste0("('",paste(choices_fspp,collapse="','"),"')")
 choices_afspp <- choices_fspp[which(fspp$alkaline_fen == TRUE)]
 string_afspp <- paste0("('",paste(choices_afspp,collapse="','"),"')")
 
+# Record status
+choices_status <-c(NULL,dbGetQuery(con_global,"SELECT DISTINCT(status) AS status FROM records.records WHERE status IS NOT NULL ORDER BY status"))
+
 # Verification categories
-verification <- dbGetQuery(con_global, "SELECT code, description FROM lookups.lookup_verification")
+verification <- dbGetQuery(con_global0, "SELECT code, description FROM lookups.lookup_verification")
 choices_verification <- verification$code
 names(choices_verification) <- verification$description
 
-squares_100k <- dbGetQuery(con_global, "SELECT gridref, x , y FROM lookups.squares_100k")
+# Data source sharing 
+sh <- dbGetQuery(con_global0, "SELECT code, description FROM lookups.lookup_sharing")
+choices_sh <- sh$code
+names(choices_sh) <- sh$description 
+
+#Data source types
+st <- dbGetQuery(con_global0, "SELECT code, description FROM lookups.lookup_survey_types")
+choices_st <- st$code
+names(choices_st) <- st$description
+
+squares_100k <- dbGetQuery(con_global0, "SELECT gridref, x , y FROM lookups.squares_100k")
+
+poolReturn(con_global0)
 
 # Global for remembering record entry ----
 

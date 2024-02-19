@@ -116,7 +116,7 @@ survey_modal_dialog <- function(session, d, edit) {
             textAreaInput(
               inputId = ns("description"),
               label = "Description of data source:",
-              value = d[11],
+              value = ifelse(!is.na(d[11]),d[11],""),
               placeholder = "Add a description",
               resize = "vertical"
             )
@@ -177,7 +177,10 @@ survey_modal_dialog <- function(session, d, edit) {
       )
     )
   ) %>% shiny::showModal()
+  
 }
+
+
 
 
 

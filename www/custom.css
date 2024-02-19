@@ -45,13 +45,13 @@
   padding: 0;
 }
 
-.tab-content{
+/*.tab-content{
   overflow-y:scroll;
   overflow-x:hidden;
   padding: 0;
-}
+}*/
 
-.tab-pane {
+.content {
   padding: 10px;
   height:90vh;
   overflow-y:scroll;
@@ -87,6 +87,10 @@
 
 .record_control{
   height:75px;
+}
+
+#queryRecords-resultsMap{
+  height:75vh !important;
 }
 
 .shiny-validation-message{
@@ -127,4 +131,35 @@ h2, h3,h4 {
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* Loading animation */
+
+.loading:after {
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: bottom;
+  -webkit-animation: ellipsis steps(4, end) 900ms infinite;
+  animation: ellipsis steps(4, end) 900ms infinite;
+  content: "\2026";
+  /* ascii code for the ellipsis character */
+  width: 0px;
+}
+
+/* Hidden button */
+
+.buttonHidden {
+  visibility: hidden !important;
+}
+
+@keyframes ellipsis {
+  to {
+    width: 40px;
+  }
+}
+
+@-webkit-keyframes ellipsis {
+  to {
+    width: 40px;
+  }
 }
