@@ -152,9 +152,6 @@ function(input, output, session) {
         if(input$menu == "plantLists"){
           n$plantLists <- n$plantLists + 1
         }
-        if(input$menu == "plantLists"){
-          n$plantLists <- n$plantLists + 1
-        }
         if(input$menu == "vegLists"){
           n$vegLists <- n$vegLists + 1
         }

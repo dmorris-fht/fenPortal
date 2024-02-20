@@ -39,57 +39,75 @@ plantListsServer <- function(id, tables) {
     id,
     function(input, output, session) {
       
-      req(tables$sites)
-      req(tables$subsites)
-      
       # Get tables & choices ----
         
-        site <- tables$sites
-        choices_site <- site$id
-        names(choices_site) <- site$site
+        choices_site <- reactive({
+          if(isTruthy(tables$sites)){
+            c <- tables$sites$id
+            names(c) <- tables$sites$site
+            return(c)
+          }
+          else{
+            return(c(""))
+          }
+        })
         
-        updateSelectizeInput(session,
-                             "site",
-                             choices = choices_site,
-                             selected = "",
-                             server = FALSE,
-                             options = list(
-                               maxItems = 1,
-                               placeholder = "Select a site",
-                               onInitialize = I('function() { this.setValue(""); }')
-                             ))
-
-        subsite <- tables$subsites
-        
-      observe({
-        req(input$site)
-        ss <- subsite[subsite$site %in% input$site,]
-        if(nrow(ss) > 0){
-          choices_subsite <- ss[,c("id")]
-          names(choices_subsite) <- ss[,c("subsite")]
-          
+        choices_subsite <- reactive({
+          if(isTruthy(tables$sites) && isTruthy(tables$subsites)){
+            if(isTruthy(input$site)){
+              ss <- tables$subsites[tables$subsites$site %in% input$site,]
+              c <- ss[,c("id")]
+              names(c) <- ss[,c("subsite")]
+            }else{
+              c <- c("")
+            }
+            return(c)
+          }
+          else{
+            return(c(""))
+          }
+        })
+         
+        observe({
           updateSelectizeInput(session,
-                             "subsite",
-                             choices = choices_subsite,
-                             selected = "",
-                             server = FALSE,
-                             options = list(
-                               placeholder = "Select one or more subsites",
-                               onInitialize = I('function() { this.setValue(""); }')
-                             ))
-        }
-        else{
-          updateSelectizeInput(session,
-                               "subsite",
-                               choices = c(""),
+                               "site",
+                               choices = choices_site(),
                                selected = "",
                                server = FALSE,
                                options = list(
-                                 placeholder = "No subsites"
+                                 maxItems = 1,
+                                 placeholder = "Select a site",
+                                 onInitialize = I('function() { this.setValue(""); }')
                                ))
-        }
-      })
-      
+        }) 
+        
+          
+        observeEvent(input$site,{
+            if(length(choices_subsite()) > 0){
+              updateSelectizeInput(session,
+                                   "subsite",
+                                   choices = choices_subsite(),
+                                   selected = "",
+                                   server = FALSE,
+                                   options = list(
+                                     placeholder = "Select one or more subsites",
+                                     onInitialize = I('function() { this.setValue(""); }')
+                                   ))
+            }
+            else{
+              updateSelectizeInput(session,
+                                   "subsite",
+                                   choices = c(""),
+                                   selected = "",
+                                   server = FALSE,
+                                   options = list(
+                                     placeholder = "No subsites"
+                                   ))
+            }
+          })
+          
+        
+          
       # Download handling ----
       
       output$dlExport <- downloadHandler(
@@ -209,8 +227,7 @@ plantListsServer <- function(id, tables) {
         })%...>% (function(d) {
           if(isTruthy(d) && nrow(d) > 0){
             p <- spread(d, key = "subsite", value = "year")
-            
-            name <- paste0(site[site$id == as.numeric(input$site), c("site")], " list ",format(Sys.time(),format="%Y%m%d%H%M%S"))
+            name <- paste0(tables$sites[tables$sites$id == as.numeric(input$site), c("site")], " list ",format(Sys.time(),format="%Y%m%d%H%M%S"))
             
             output$dlExport <- downloadHandler(
               filename = function() {
