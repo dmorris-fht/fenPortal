@@ -1,6 +1,7 @@
 
 function(input, output, session) {
   #Session reactives----
+
   # Login reactive
   login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, con = NA)
 
@@ -241,7 +242,7 @@ function(input, output, session) {
       
       # Other modules ----
   
-      #exploreServer("exploreHydro",login$con)
+      exploreServer("exploreHydro")
   
   
       if(login$role == "cru" || login$role == "cr"){

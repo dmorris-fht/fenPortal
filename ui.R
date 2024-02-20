@@ -1,5 +1,5 @@
 dashboardPage(
-  dashboardHeader(title = "FenPortal",
+  dashboardHeader(title = "fenPortal",
                   titleWidth = 250,
                   tags$li(class = "dropdown",
                           tags$i(class = "fa fa-user",style="display:inline-block"),
@@ -141,18 +141,18 @@ dashboardPage(
                 dataSharingUI("dataSharing")
               )
       )
-      # ,
-      # tabItem(tabName = "explore",
-      #           fluidRow(
-      #             exploreUI("exploreHydro")
-      #           )
-      #         ),
+      ,
+      tabItem(tabName = "explore",
+                fluidRow(
+                  exploreUI("exploreHydro")
+                )
+              ),
       # tabItem(tabName = "dipsManage",
       #         fluidRow(
       #           #dips_manageUI("dipsManage")
       #         )
-      # )
-      ,
+      # ),
+      
       tabItem(tabName = "loggersManage",
               fluidRow(
                 loggersManageUI("loggersManage"),
