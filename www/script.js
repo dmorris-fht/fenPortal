@@ -42,3 +42,15 @@ $(document).keydown(function(e) {
     }
     down[e.keyCode] = false;
 });
+
+// Query records map select 
+
+$("#queryRecords-resultsMap").on('mousemove',function(event){
+    if($('.leaflet-draw-draw-rectangle').hasClass('leaflet-draw-toolbar-button-enabled') == true){
+        Shiny.setInputValue("queryRecords-map_mode", 'draw', {priority: "event"});
+    }else{
+        Shiny.setInputValue("queryRecords-map_mode", 'click', {priority: "event"});
+    }
+    
+  }
+);

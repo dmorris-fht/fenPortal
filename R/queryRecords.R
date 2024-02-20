@@ -850,15 +850,12 @@ queryRecordsServer <- function(id, login, tables) {
       
       output$mapTable <- DT::renderDT(
         {
-          shiny::isolate(rv2$df)
-          
-          x <- rv2$df[,c("taxon_name","site_name","subsite_name","record_date","Buttons")]
-
-          return(x)
+          x <- data.frame(taxon_name = character(), site_name = character(), subsite_name = character(), record_date = Date(), Buttons = character())
+          x
         }
         ,
         server = TRUE,
-        escape = F,
+        escape = FALSE,
         rownames = FALSE,
         selection = 'single',
         colnames = c("Taxon","Site","Subsite","Date",""),
@@ -876,7 +873,7 @@ queryRecordsServer <- function(id, login, tables) {
                        extensions = c("FixedHeader"),#, "Scroller")
                        fixedHeader = TRUE,
                        scrollY = "55vh"
-        )
+                       )
       ) 
       
       proxy_DT2 <- DT::dataTableProxy("mapTable")
@@ -1235,7 +1232,6 @@ queryRecordsServer <- function(id, login, tables) {
           addTiles(group="OpenStreetMap.Mapnik") %>% 
           addProviderTiles("Esri.WorldImagery", group = "Satellite") %>%
           addProviderTiles("OpenStreetMap.HOT", group = "OpenStreetMap.HOT") %>%
-          # addProviderTiles("Stamen.TerrainBackground", group = "Stamen.TerrainBackground", options = providerTileOptions(minzoom = 1, maxzoom = 13)) %>%
           addMiniMap(tiles = "OpenStreetMap.HOT", toggleDisplay = TRUE) %>%
           addSearchOSM() %>%
           addEasyButton(easyButton(icon="fa-home", title="Home view", onClick=JS("function(btn, map){ map.fitBounds([[-5.515982,50.024189],[1.35876,55.948577]]); }"))) %>%
@@ -1255,7 +1251,7 @@ queryRecordsServer <- function(id, login, tables) {
           addDrawToolbar(
             position = "bottomleft",
             polylineOptions = FALSE,
-            polygonOptions = drawPolygonOptions(),
+            polygonOptions = FALSE, #drawPolygonOptions(),
             circleOptions = FALSE,
             rectangleOptions = drawRectangleOptions(),
             markerOptions = FALSE,
@@ -1352,17 +1348,24 @@ queryRecordsServer <- function(id, login, tables) {
       })
       
       # Update map results DT ----
+      map_mode <- reactive({
+          if(isTruthy(input$map_mode)){return(input$map_mode)}
+          else{return("click")}
+        }) # reactive to catch map mode input controlled by JS map mouseover
       
+        ## Click record on top
       observeEvent(input$resultsMap_shape_click,{
-        g <- input$resultsMap_shape_click$id
-        rv2$df <- rv$df[rv$df$gridref == g & !is.na(rv$df$gridref),]
-        x <- rv2$df[,c("taxon_name","site_name","subsite_name","record_date","Buttons")]
-        DT::replaceData(proxy_DT2, x, resetPaging = FALSE, rownames = FALSE)
+        req(isTruthy(rv$sf) && isTruthy(input$resultsMap_shape_click) && map_mode() == "click")
+          g <- input$resultsMap_shape_click$id
+          rv2$df <- rv$df[rv$df$gridref == g & !is.na(rv$df$gridref),]
+          x <- rv2$df[,c("taxon_name","site_name","subsite_name","record_date","Buttons")]
+          DT::replaceData(proxy_DT2, x, resetPaging = FALSE, rownames = FALSE)
+       
       })
       
-      data <- reactiveValues(record = list())
-      
+        ## Drag select
       observeEvent(input$resultsMap_draw_new_feature, {
+        req(isTruthy(rv$sf) && isTruthy(input$resultsMap_draw_new_feature) && map_mode() == "draw")
         
         polygon_coordinates <- input$resultsMap_draw_new_feature$geometry$coordinates[[1]]
         l <- do.call(rbind,lapply(polygon_coordinates,function(x){c(x[[1]][1],x[[2]][1])}))
@@ -1371,15 +1374,16 @@ queryRecordsServer <- function(id, login, tables) {
 
         if(isTruthy(rv$sf)){
           selected <- rv$sf[unlist(st_intersects(drawn_polygon,rv$sf)),]
-          rv2$df <- rv$df[rv$df$gridref %in% selected$gridref & !is.na(rv$df$gridref),]
+          rv2$df <- rv$df[which(rv$df$gridref %in% selected$gridref) ,]
           x <- rv2$df[,c("taxon_name","site_name","subsite_name","record_date","Buttons")]
           DT::replaceData(proxy_DT2, x, resetPaging = FALSE, rownames = FALSE)
         }
+        
         proxy_map %>% removeDrawToolbar(clearFeatures=TRUE) %>%
           addDrawToolbar(
             position = "bottomleft",
             polylineOptions = FALSE,
-            polygonOptions = drawPolygonOptions(),
+            polygonOptions = FALSE, #drawPolygonOptions(),
             circleOptions = FALSE,
             rectangleOptions = drawRectangleOptions(),
             markerOptions = FALSE,
@@ -1387,10 +1391,9 @@ queryRecordsServer <- function(id, login, tables) {
             singleFeature = TRUE
           )
         
+        
         })
-      
-      
-      
+
       # Run query ----
       observeEvent(input$runQuery,{
         req(gf_check() == TRUE)
