@@ -229,6 +229,7 @@ dataSharingServer <- function(id, login){
       # DT buttons ----
       
         observeEvent(input$current_id, {
+          if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "export_info")){
             rv$dt_row <- as.numeric(sub("export_info_","",input$current_id))
             
             e <- rv$exp0[rv$exp0$id == rv$dt_row,c("export_user","export_date","export_note","created_user","created_date","last_edited_user","last_edited_date")] 
@@ -242,6 +243,7 @@ dataSharingServer <- function(id, login){
             shinyjs::disable("modal_created_date")
             shinyjs::disable("modal_last_edited_user")
             shinyjs::disable("modal_last_edited_date")
+          }
         })
           
       # Generate new export ----

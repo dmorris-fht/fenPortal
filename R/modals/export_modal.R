@@ -1,7 +1,7 @@
 survey_modal_dialog <- function(session, s, e) {
   ns <- session$ns
   modalDialog(
-    title = "Data source / survey",
+    title = "Data export",
     fluidRow(
       tagList(
         column(12,

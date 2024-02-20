@@ -719,8 +719,7 @@ loggersManageServer <- function(id, login, tables) {
       })
 
 
-      ##Logger table select rows FIX THIS for no logger selected ----
-      #observeEvent(input$loggersTable_rows_selected,ignoreNULL = FALSE,{
+      ##Logger table select rows ----
 
       observe({
         if(isTruthy(input$loggersTable_rows_selected)){
