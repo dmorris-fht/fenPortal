@@ -6,6 +6,7 @@ match_choices_taxa <- match_choices_sites[1:4]
 importRecordsUI <- function(id){
   ns <- NS(id)
   tagList(
+    withSpinner(
     column(12,
            tabsetPanel(id = ns("importTabset"),
                        tabPanel("1 - Import file",value = "importPanel",
@@ -116,7 +117,17 @@ importRecordsUI <- function(id){
                        )
            )
     ,
-    tags$script(src ="script.js")
+    id = ns("module"),
+    type = 4,
+    size = 2,
+    proxy.height = "100%",
+    hide.ui = TRUE,
+    caption = "Loading module")
+    ,
+    tags$script(src ="script.js"),
+    tags$script(
+      HTML("$('#importRecords-module').parent().removeClass('shiny-spinner-hidden')")
+    )
   )
 }
 
@@ -127,19 +138,34 @@ importRecordsServer <- function(id, login, tables) {
       
       # Initialisation ----
         
-        req(tables$sites0)
-        req(tables$sites)
-        req(tables$surveys)
-
         source("./R/modals/record_import_modals.R")
       
         user <- login$username
         password <- login$password
-        sites0 <- tables$sites0
-        sites <- tables$sites
-        sites_choices <- sites$id
-        names(sites_choices) <- sites$site
-       
+        
+        observe({
+          req(tables$sites)
+          req(tables$surveys)
+          req(tables$subsites)
+          
+          runjs(
+            "$('#importRecords-module').parent().addClass('shiny-spinner-hidden');
+          $('div[data-spinner-id=\"import-module\"]').css('display','inline')
+          "
+          )
+        })
+        
+        sites_choices <- reactive({
+          if(isTruthy(tables$sites)){
+            c <- tables$sites$id
+            names(c) <- tables$sites$site
+          }
+          else{
+            c <- c("")
+          }
+          return(c)
+        })
+
         rv <- reactiveValues(df = NULL, dt_row = NULL, 
                              df_s = NULL, dt_row_s = NULL, 
                              df_t = NULL, dt_row_t = NULL, 
@@ -170,7 +196,7 @@ importRecordsServer <- function(id, login, tables) {
                         escape = FALSE,
                         rownames = FALSE,
                         selection = 'single',
-                        colnames <- c(cols, ""),
+                        colnames <- c(cols, "","valid"),
                         options = list(processing = FALSE,
                                        language = list(zeroRecords = "No records"),
                                        columnDefs = list(
@@ -310,8 +336,13 @@ importRecordsServer <- function(id, login, tables) {
         
         if(identical(colnames(d), colnames(x0)) == TRUE){
           # validate input
-          # d[c(1:14)] <- apply(d[c(1:14)],c(1,2),function(x) blank(trimws(x))) too slow to bother with this
+          d$gridref <- as.character(d$gridref)
           d$gridref <- apply(d[c("gridref")],1,function(g)toupper(gsub(" ","",blank(g))))
+          
+          d$site_record <- as.character(d$site_record)
+          d$taxon_nbn <- as.character(d$taxon_nbn)
+          d$taxon_record <- as.character(d$taxon_record
+                                         )
           d[apply(d[c("taxon_nbn")],1,function(x) !isTruthy(x)),c("taxon_nbn")] <- NA
           d$valid <- 
             apply(d[c("gridref",
@@ -332,9 +363,9 @@ importRecordsServer <- function(id, login, tables) {
           # add DT rows
           d$id <- seq.int(nrow(d)) # add id row
           d <- add_edit_del_btns(d,"csv") # add buttons
-          
+
           updateCheckboxInput(session, "invalid", value = FALSE)
-        
+          
           if(sum(d$valid) != nrow(d)){
             showModal(
               modalDialog(
@@ -395,22 +426,27 @@ importRecordsServer <- function(id, login, tables) {
           shinyjs::disable("match")
         }
       })
-      
+        
+        ## Run the matching ----
       observeEvent(input$match,{
         req(sum(rv$df$valid) == nrow(rv$df))
         
         showSpinner("matchSitesTable")
         ## Match site ----
         future_promise({
+          req(tables$sites0)
+          
           site_match <- unique(rv$df[,c("site_record","gridref")])
           d <- site_match
-          d$geometry <- apply(d[c("gridref")],1,gf_sf)
+          d$geometry <- st_sfc(d$geometry)
+          d[which(isTruthy(d$gridref)),c("geometry")] <- apply(d[which(isTruthy(d$gridref)),][c("gridref")],1,gf_sf)
           d <- st_as_sf(d)
-          st_crs(d) <- st_crs(27700)
-          int <- st_intersects(st_buffer(d,10),sites0) # sites within 10m of grid squares
           
-          site_match$ids_match <- lapply(int,function(x) sites[unlist(x),c("id")]) # ids of matched sites
-          site_match$sites_match <- lapply(int,function(x) sites[unlist(x),c("site")]) # names of matched sites
+          st_crs(d) <- st_crs(27700)
+          int <- st_intersects(st_buffer(d,10),tables$sites0) # sites within 10m of grid squares
+          
+          site_match$ids_match <- lapply(int,function(x) tables$sites[unlist(x),c("id")]) # ids of matched sites
+          site_match$sites_match <- lapply(int,function(x) tables$sites[unlist(x),c("site")]) # names of matched sites
           
           site_match$length_match <- apply(site_match[c("ids_match")],1,function(x) length(unlist(x)))
           u <- which(site_match$length_match == 1) # unique matches
@@ -422,6 +458,7 @@ importRecordsServer <- function(id, login, tables) {
           site_match$subsite <- NA
           site_match$id <- seq.int(nrow(site_match))
           site_match <- add_edit_del_btns(site_match,"sites")
+          
           return(site_match)
         })%...>% (function(site_match) {
           rv$df_s <- site_match
@@ -474,39 +511,31 @@ importRecordsServer <- function(id, login, tables) {
       
       # DT row buttons ----
       
-      match_choices <- reactive({})
-      
-      observeEvent(rv$dt_row,{
+      match_choices <- reactive({
         req(rv$dt_row)
         if(rv$mode == "site"){
+          c <- c("")
           if(rv$df_s[rv$dt_row,c("length_match")] > 0){
             c <- unlist(rv$df_s[rv$dt_row,c("ids_match")])
             names(c) <- unlist(rv$df_s[rv$dt_row,c("sites_match")])
-            match_choices() <- c
-          }
+            }
           if(is.na(rv$df_s[rv$dt_row,c("gridref")])){
-            match_choices() <- sites_choices
+            c <- sites_choices()
           }
-          else{
-            match_choices() <- c("")
-          }
+          return(c)
         }
         if(rv$mode == "taxon"){
-          if(length(taxa_match_choices) > 0){
+          c <- c("")
+          if(rv$df_t[rv$dt_row,c("length_match")] > 0){
             c <- unlist(rv$df_t[rv$dt_row,c("tvks_match")])
             names(c) <- unlist(rv$df_t[rv$dt_row,c("taxa_match")])
-            match_choices() <- c
           }
           if(is.na(rv$df_s[rv$dt_row,c("gridref")])){
-            match_choices() <- choices_uksi
-            }
-          else{
-            match_choices() <- c("")
+            c <- choices_uksi
           }
         }
-        else{
-          match_choices() <- c("")
-        }
+        
+        return(c)
       })
       
       # Update site choices when gridref changes
@@ -517,7 +546,7 @@ importRecordsServer <- function(id, login, tables) {
         req(input$match_gridref != rv$df_s[rv$dt_row,c("gridref")])
         g <- st_sfc(gf_sf(input$match_gridref))
         st_crs(g) <- st_crs(27700)
-        int <- st_intersects(st_buffer(g,10),sites0) # sites within 10m of grid squares
+        int <- st_intersects(st_buffer(g,10),tables$sites0) # sites within 10m of grid squares
         
         match_choices() <- sites[unlist(int),c("id")]
         names(match_choices()) <- sites[unlist(int),c("site")]
@@ -781,7 +810,12 @@ importRecordsServer <- function(id, login, tables) {
           rv$mode <- "taxon"
           
           t <- ifelse(rv$df_t[rv$dt_row,c("length_match")] == 1,rv$df_t[rv$dt_row,c("tvk_match")],"")
-          edit_df_t_row(session,rv$df_t[rv$dt_row,c("taxon_record")],match_choices(),t)
+          edit_df_t_row(session,rv$df_t[rv$dt_row,c("taxon_record")])
+          
+          updateSelectizeInput(session, "tvk_match", 
+                               choices = match_choices(), 
+                               server = TRUE,
+                               selected = t)
           
           shinyjs::disable("match_taxon_record")
           
@@ -916,7 +950,7 @@ importRecordsServer <- function(id, login, tables) {
                 blank(input$match_site_record),
                 blank(input$match_gridref),
                 as.numeric(input$site_match),
-                sites[sites$id == input$site_match,c("site")],
+                tables$sites[tables$sites$id == input$site_match,c("site")],
                 blank(input$subsite)
               )
         removeModal()
@@ -933,13 +967,19 @@ importRecordsServer <- function(id, login, tables) {
       })
       # Submit validated records ----
       
+      choices_surveys <- reactive({
+        if(isTruthy(tables$surveys)){
+          c <- tables$surveys$id
+          names(c) <- tables$surveys$survey
+        }
+        else{
+          c <- c("")
+        }
+        return(c)
+      })
+      
       observe({
-        req(tables$surveys)
-        
-        choices_surveys <- tables$surveys$id
-        names(choices_surveys) <- tables$surveys$survey
-        
-        updateSelectizeInput(session, "survey", choices = choices_surveys, selected = "")
+        updateSelectizeInput(session, "survey", choices = choices_surveys(), selected = "")
       })
       
       shinyjs::disable("upload")
