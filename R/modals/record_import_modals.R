@@ -229,7 +229,7 @@ edit_df_s_row <- function(session,r, choices, s){
   ) %>% showModal()
 }
 
-edit_df_t_row <- function(session,r, choices, t){
+edit_df_t_row <- function(session,r){
   ns <- session$ns
   modalDialog(
     column(6,
@@ -244,7 +244,7 @@ edit_df_t_row <- function(session,r, choices, t){
                selectizeInput(ns("tvk_match"),
                               label = "taxon_match",
                               choices = c(""),
-                              selected = s,
+                              selected = "",
                               multiple = TRUE,
                               options = list(maxItems = 1)
                )
