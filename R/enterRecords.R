@@ -1,6 +1,8 @@
 enterRecordsUI <- function(id){
   ns <- NS(id)
   tagList(
+    withSpinner(
+      tagList(
     # Form controls ----
     column(12,h3("Enter biological records")) , 
     column(12,style="padding-right:0;padding-left:20px",
@@ -429,8 +431,19 @@ enterRecordsUI <- function(id){
                   )
                   )
     ),
-    tags$script(src ="script.js")
+      )
+    ,
+    id = ns("module"),
+    type = 4,
+    size = 2,
+    proxy.height = "100%",
+    hide.ui = TRUE,
+    caption = "Loading module"),
+    tags$script(src ="script.js"),
+    tags$script(
+      HTML("$('#enterRecords-module').parent().removeClass('shiny-spinner-hidden')")
     )
+  )
 }
 
 enterRecordsServer <- function(id, login, tables) {
@@ -442,7 +455,24 @@ enterRecordsServer <- function(id, login, tables) {
       
       user <- login$username
       password <- login$password
-      con <- poolCheckout(login$con) # FIX THIS
+
+      # Module initialisation ----
+      isolate({
+        app_tables(tables, c("sites","subsites","surveys"))
+      })
+      
+      observe({
+        req(tables$sites)
+        req(tables$surveys)
+        req(tables$subsites)
+        
+        runjs(
+          paste0(
+            "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
+                 $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
+          )
+        )
+      })
       
       # Update input boxes once tables loaded
       updateSelectizeInput(session,
@@ -1153,7 +1183,7 @@ enterRecordsServer <- function(id, login, tables) {
               ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE
             )
           )
-          
+          con <- fenDb0(user,password)
           insert <- pgWriteGeom(con, 
                                 name = c("records","records"),
                                 data.obj = d$data[,1:28],
@@ -1161,6 +1191,8 @@ enterRecordsServer <- function(id, login, tables) {
                                 overwrite = FALSE,
                                 upsert.using = "guid"
                                 )
+          dbDisconnect(con)
+          return(insert)
           })%...>% (function(insert) {
             
             if(insert == TRUE){
