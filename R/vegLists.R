@@ -1,8 +1,9 @@
 vegListsUI <- function(id){
   ns <- NS(id)
   tagList(
-    
-    column(5,
+    withSpinner(
+      tagList(
+        column(5,
            column(12,
                   h3("Site vegetation plot data"),
                   p("Use this tool to generate data from vegetation monitoring plots for use in future monitoring."), 
@@ -31,25 +32,58 @@ vegListsUI <- function(id){
                   div(downloadButton(ns("dlExport")),class="buttonHidden")
               )
            )
-  )
-}
+        ),
+      id = ns("module"),
+      type = 4,
+      size = 2,
+      proxy.height = "100%",
+      hide.ui = TRUE,
+      caption = "Loading module"),
+      tags$script(src ="script.js"),
+      tags$script(
+        HTML(
+          paste0("$('#",id,"-module').parent().removeClass('shiny-spinner-hidden')")
+          )
+        )
+    )
+  }
 
 vegListsServer <- function(id, tables) {
   moduleServer(
     id,
     function(input, output, session) {
-      req(tables$sites)
-      req(tables$plots)
+      # Module initialisation ----
+      isolate({
+        app_tables(tables, c("sites","plots"))
+        })
       
-      # Get tables & choices ----
+      observe({
+        req(tables$sites)
+        req(tables$plots)
         
-        site <- tables$sites
-        choices_site <- site$id
-        names(choices_site) <- site$site
+        runjs(
+          paste0(
+            "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
+                 $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
+            )
+          )
+        })
+      
+      choices_site <- reactive({
+        if(isTruthy(tables$sites)){
+          c <- tables$sites$id
+          names(c) <- tables$sites$site
+          return(c)
+        }
+        else{
+          return(c(""))
+        }
+      })
         
+      observe({
         updateSelectizeInput(session,
                              "site",
-                             choices = choices_site,
+                             choices = choices_site(),
                              selected = "",
                              server = FALSE,
                              options = list(
@@ -57,11 +91,14 @@ vegListsServer <- function(id, tables) {
                                placeholder = "Select a site",
                                onInitialize = I('function() { this.setValue(""); }')
                              ))
-
-      plots <- tables$plots
+        })
         
+
       observe({
+        req(tables$sites)
+        req(tables$plots)
         req(input$site)
+        plots <- tables$plots
         p <- plots[plots$site %in% input$site,]
         if(nrow(p) > 0){
           choices_plots <- sort(p$plot_reference)

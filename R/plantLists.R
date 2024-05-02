@@ -1,6 +1,9 @@
 plantListsUI <- function(id){
   ns <- NS(id)
   tagList(
+    withSpinner(
+  
+  tagList(
     
     column(5,
            column(12,
@@ -31,6 +34,19 @@ plantListsUI <- function(id){
                   div(downloadButton(ns("dlExport")),class="buttonHidden")
               )
            )
+  ),
+  id = ns("module"),
+  type = 4,
+  size = 2,
+  proxy.height = "100%",
+  hide.ui = TRUE,
+  caption = "Loading module"),
+  tags$script(src ="script.js"),
+  tags$script(
+    HTML(
+      paste0("$('#",id,"-module').parent().removeClass('shiny-spinner-hidden')")
+    )
+  )
   )
 }
 
@@ -39,8 +55,23 @@ plantListsServer <- function(id, tables) {
     id,
     function(input, output, session) {
       
-      # Get tables & choices ----
+      # Module initialisation ----
+        isolate({
+          app_tables(tables, c("sites","subsites"))
+          })
         
+        observe({
+          req(tables$sites)
+          req(tables$subsites)
+  
+          runjs(
+            paste0(
+              "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
+                   $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
+              )
+            )
+          })
+      
         choices_site <- reactive({
           if(isTruthy(tables$sites)){
             c <- tables$sites$id
