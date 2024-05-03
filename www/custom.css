@@ -1,3 +1,5 @@
+hr {border-top: 1px solid #000000;}
+
 .shiny-input-container:not(.shiny-input-container-inline) {
   width: 100%;
 }
@@ -65,6 +67,11 @@
     width: 20px;
 }
 
+.small-info{
+  width:30px;
+  height:30px;
+}
+
 .compact {
   padding: 0;
   margin-bottom: 0;
@@ -90,6 +97,10 @@
 }
 
 #queryRecords-resultsMap{
+  height:75vh !important;
+}
+
+#installsManage-installsMap{
   height:75vh !important;
 }
 
@@ -144,6 +155,7 @@ h2, h3,h4 {
   content: "\2026";
   /* ascii code for the ellipsis character */
   width: 0px;
+  margin-left: 50%;
 }
 
 /* Hidden button */
@@ -162,4 +174,150 @@ h2, h3,h4 {
   to {
     width: 40px;
   }
+}
+
+/* Hide disabled DT filter boxes */
+
+div:has(> input[type~="search"]:disabled){
+  visibility: hidden;
+}
+
+/* CUSTOM SPINNERS FOR MODULES LOADING */
+
+div[data-spinner-id~="surveys-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #surveys-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+/* Records modules */
+
+div[data-spinner-id~="queryRecords-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #queryRecords-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+div[data-spinner-id~="enterRecords-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #enterRecords-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+div[data-spinner-id~="importRecords-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #importRecords-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+/* Vegetation modules */
+
+div[data-spinner-id~="vegManage-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #vegManage-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+/* Monitoring tools modules*/
+
+div[data-spinner-id~="plantLists-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #plantLists-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+div[data-spinner-id~="vegLists-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #vegLists-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+/* Hydro modules */
+
+div[data-spinner-id~="installsManage-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #installsManage-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+div[data-spinner-id~="loggersManage-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #loggersManage-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+div[data-spinner-id~="dipsImport-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #dipsImport-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
 }
