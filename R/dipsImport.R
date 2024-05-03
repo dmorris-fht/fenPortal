@@ -11,7 +11,7 @@ dipsImportUI <- function(id) {
                        <ul>
                           <li><b>ArcGIS Online feature service:</b> Specify the REST URL for the layer containing the table of dipwell measurements. 
                           You can find the URL for a service on its details page - you just need to add the layer number to the end. To import from a feature service, 
-                          it must be shared publicly and follow the template available <a href='https://fht.maps.arcgis.com/home/item.html?id=804697e8efb843e7adf9ca3badcd56e3', target='_blank'>here</a>.</li>
+                          it must be shared publicly (e.g. via a view layer) and follow the template available <a href='https://fht.maps.arcgis.com/home/item.html?id=804697e8efb843e7adf9ca3badcd56e3', target='_blank'>here</a>.</li>
                           <li><b>Comma-separated value (.csv) file:</b> Upload a .csv file using the template available <a href='./templates/dips_import_template.csv'>here</a>. Using this method, data to import must be from the same site.</li>
                           </ul>")
                      )
@@ -68,15 +68,14 @@ dipsImportUI <- function(id) {
                                        h4("Import data"),
                                        HTML("<p>Click the button below to import the query results into the database. Note that:</p>
                                <ul>
-                               <li>If the data to import include dip measurements already present in the database 
-                               (identified by the universal unique identifier column 'guid'), 
-                               then the import will fail.</li>
-                               <li>Checking 'Import attachments?' will import files attached to dip records. Only images in jpeg format will be imported,
-                               and files more than 500 kB will be first compressed. Importing attachments will make the import slower.</li>
+                               <li>If a subset of data to import is already present in the database 
+                               (identified by the universal unique identifier column), then this will be skipped.</li>
+                               <li>Checking 'Import attachments' will import files attached to dip records. Only images in jpeg format will be imported,
+                               and files more than 500 kB will frst be compressed. Importing attachments will make the import slower.</li>
                                </ul>
                                "),
                                               textAreaInput(ns("import_notes_agol"), label = "Import notes", width = "100%", resize = "vertical"),
-                                              checkboxInput(ns("import_attachments"), label = "Import attachments?",value = FALSE),
+                                              checkboxInput(ns("import_attachments"), label = "Import attachments",value = FALSE),
                                               actionButton(ns("importAGOL"), label = "Import data")
                             )),
                             hidden(div(id = ns("importCSVtext"),
@@ -218,7 +217,7 @@ dipsImportServer <- function(id,login,tables) {
           pageLength = 25,
           dom = 'tpli',
           extensions = c("FixedHeader", "Scroller"),
-          fixedHeader = TRUE,scrollY = "35vh",
+          fixedHeader = TRUE,scrollY = "50vh",
           columnDefs = list(
             list(className = 'dt-center', targets = c(3))
             )
@@ -618,15 +617,18 @@ dipsImportServer <- function(id,login,tables) {
                 }
               
               # construct final query string
-              q2 <- paste0(
+              q3 <- paste0(
                 "WITH imp AS (",q0,"), \n",
                 "dips AS (
                     INSERT INTO hydro_monitoring.dips (install,dip_date_time,dip_measurer,dip_depth_top,dip_notes,dip_null,dips_import,guid) VALUES \n "
-                    , paste(Q1,collapse = ", \n ")," RETURNING guid",
+                    , paste(Q1,collapse = ", \n "),
+                " ON CONFLICT (guid) DO NOTHING \n 
+                 RETURNING guid",
                 ") \n ",
                 q2, 
-                paste(Q2,collapse = ", \n ")
-              )
+                paste(Q2,collapse = ", \n "),
+                " \n ON CONFLICT (guid) DO NOTHING"
+                )
               
               
             }else{
@@ -634,10 +636,12 @@ dipsImportServer <- function(id,login,tables) {
               q1 <- paste0("WITH imp AS (",q0,") \n ",
                            "INSERT INTO hydro_monitoring.dips (install,dip_date_time,dip_measurer,dip_depth_top,dip_notes,dip_null,dips_import) VALUES "
                            )
-              q2 <- paste0(q1,paste(Q1,collapse = ", \n ")," RETURNING (SELECT id FROM imp);")
+              q3 <- paste0(q1,paste(Q1,collapse = ", \n "),
+                           "ON CONFLICT (guid) DO NOTHING \n 
+                            RETURNING (SELECT id FROM imp);")
             }
             
-            r <- dbGetQuery(con0,q2)
+            r <- dbGetQuery(con0,q3)
             
             dbDisconnect(con0)
             return(r)
