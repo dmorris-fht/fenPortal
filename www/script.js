@@ -1,12 +1,16 @@
 // DT row button click handler
 
 function get_id(clicked_id) {
-    Shiny.setInputValue("loggersManage-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("surveys-current_id", clicked_id, {priority: "event"});
+    
     Shiny.setInputValue("queryRecords-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("enterRecords-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("importRecords-current_id", clicked_id, {priority: "event"});
+    Shiny.setInputValue("vegManage-current_id", clicked_id, {priority: "event"});
+        
     Shiny.setInputValue("dataSharing-current_id", clicked_id, {priority: "event"});
+    Shiny.setInputValue("installsManage-current_id", clicked_id, {priority: "event"});
+    Shiny.setInputValue("loggersManage-current_id", clicked_id, {priority: "event"});
   }
 
 // Login controls
