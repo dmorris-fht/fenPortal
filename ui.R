@@ -33,13 +33,19 @@ dashboardPage(
         menuItem("Data sources", tabName  = "surveys", icon = icon("database")),
       
       div(h4("Biological data & monitoring"),style="margin-left:10px"),
-        menuItem("Search records", tabName  = "queryRecords", icon = icon("search")),
-        menuItem("Add data", icon = icon("leaf"), expandedName = "importRecords",
-                 menuSubItem("Enter records", tabName = "enterRecords"),
-                 menuSubItem("Import records", tabName = "importRecords"),
-                 menuSubItem("Enter vegetation data", tabName = "importVeg"),
-                 menuSubItem("Import observations", tabName = "importObs")
-        ),
+      
+      menuItem("Manage records",icon = icon("clipboard-list"),expandedName = "records",
+               menuSubItem("Search records", tabName  = "queryRecords"),
+               menuSubItem("Enter records", tabName = "enterRecords"),
+               menuSubItem("Import records", tabName = "importRecords")
+               ),
+      
+      menuItem("Vegetation monitoring",icon = icon("leaf"),expandedName = "veg",
+               menuSubItem("Enter data", tabName = "vegManage"),
+               menuSubItem("Analyse vegetation data", tabName = "vegAnalyse")
+               
+               ),
+
         menuItem("Monitoring tools", icon = icon("tools"), expandedName = "monTools",
                  menuSubItem("Plant lists", tabName = "plantLists"),
                  menuSubItem("Vegetation data", tabName = "vegLists")
@@ -51,7 +57,7 @@ dashboardPage(
       div(h4("Hydrological monitoring"),style="margin-left:10px"),
       menuItem("Explore data", tabName  = "explore", icon = icon("tint")),
       menuItem("Manage network", icon = icon("water"), expandedName = "manageMenu",
-               menuSubItem("Manage dipwells", tabName = "dipsManage"),
+               menuSubItem("Manage installs", tabName = "installsManage"),
                menuSubItem("Manage loggers", tabName = "loggersManage"),
                menuSubItem("Logger derivation points", tabName  = "loggersDer")
       ),
@@ -77,7 +83,7 @@ dashboardPage(
     tags$script(HTML("$('body').addClass('fixed');")),
     
     #Login page
-    loginUI("loginForm"),
+    #loginUI("loginForm"),
     
     
     tabItems(
@@ -118,6 +124,12 @@ dashboardPage(
               )
       ),
       
+      tabItem(tabName = "vegManage",
+              fluidRow(
+                vegManageUI("vegManage")
+              )
+      ),
+      
       tabItem(tabName = "importRecords",
               fluidRow(
                 importRecordsUI("importRecords")
@@ -147,23 +159,24 @@ dashboardPage(
                   exploreUI("exploreHydro")
                 )
               ),
-      # tabItem(tabName = "dipsManage",
-      #         fluidRow(
-      #           #dips_manageUI("dipsManage")
-      #         )
-      # ),
+      tabItem(tabName = "installsManage",
+              fluidRow(
+                installsManageUI("installsManage")
+              )
+      ),
       
       tabItem(tabName = "loggersManage",
               fluidRow(
                 loggersManageUI("loggersManage"),
               )
       )
+      ,
+      tabItem(tabName = "dipsImport",
+                fluidRow(
+                  dipsImportUI("dipsImport")
+                )
+              )
       # ,
-      # tabItem(tabName = "dipsImport",
-      #           fluidRow(
-      #             dips_importUI("importDips")
-      #           )
-      #         ),
       # tabItem(tabName = "loggersImport",
       #           fluidRow(
       #             logger_importUI("importLoggers")
