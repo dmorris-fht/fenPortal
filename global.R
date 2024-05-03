@@ -3,6 +3,7 @@ library(shiny)
 library(shinyjs)
 library(shinydashboard)
 library(shinycssloaders)
+library(shinydisconnect) #NEEDS INSTALLING ON SERVER
 library(DT)
 library(shinyvalidate)
 
@@ -31,19 +32,23 @@ library(shinyTime) #?
 library(future) 
 library(promises)
 library(geojsonsf) #?
+library(jsonlite)
+library(magick) # seems to have installed
 
-library(RPostgreSQL) # NEEDS INSTALLING ON SERVER
+library(slickR)
+library(base64enc)
+
+library(RPostgreSQL) 
 library(rpostgis)
 library(DBI) # Don't need this too?
 library(pool)
 
 # No longer in use
-# library(jsonlite)
 library(scales) #?
 library(readr)
 library(RPostgres)
 
-#Functions to handle missing values ----
+# Functions to handle missing values ----
 blank <- function(x){ifelse(!isTruthy(x),NA,x)}
 
 na <- function(x){
@@ -65,6 +70,10 @@ compareNA <- function(v1,v2) {
   same[is.na(same)] <- FALSE
   return(same)
 }
+
+coalesce.list <- function(x){
+  return(x[min(which(!is.na(x)))])
+  }
 
 concatenate_na.rm <- function(x){
   paste(x[!is.na(x)], collapse = " ")
@@ -459,7 +468,7 @@ taxon_lookup <- function(t){
 
 import_validation <- function(x){
   prod(
-    isGridref(x[[1]]), # gridref
+    isGridref(x[[1]]) || !isTruthy(x[[1]]), # gridref
     IsDate(x[[2]]) || !isTruthy(x[[2]]), # date
     IsDate(x[[3]]) || !isTruthy(x[[3]]), # start date
     IsDate(x[[4]]) || !isTruthy(x[[4]]), # end date
@@ -473,35 +482,6 @@ import_validation <- function(x){
     isTruthy(x[[1]]) || isTruthy(x[[9]]), # gridref and site not both null
     isTruthy(x[[10]]) || isTruthy(x[[11]]) # nbn tvk or taxon name given
     )
-}
-
-# Connection function ----
-drv <- dbDriver("PostgreSQL", max.con = 100)
-fenDb <- function(u, p){
-            dbPool(drv, 
-              user = u, 
-              password = p,
-              host = "data-fht.postgres.database.azure.com", 
-              port = 5432, 
-              dbname = "fen_database")
-}
-
-fenDb0 <- function(u, p){
-  dbConnect(drv, 
-         user = u, 
-         password = p,
-         host = "data-fht.postgres.database.azure.com", 
-         port = 5432, 
-         dbname = "fen_database")
-}
-
-fenDbTest <- function(u, p){
-  DBI::dbCanConnect(RPostgres::Postgres(), 
-            user = u, 
-            password = p,
-            host = "data-fht.postgres.database.azure.com", 
-            port = 5432, 
-            dbname = "fen_database")
 }
 
 # Functions for adding row buttons to DT ----
@@ -591,17 +571,17 @@ val_btns <- function(x,n){
 
 # AGOL integration functions ----
 
-fetch_agol <- function(connection, url, where, geometry, attachments){
+fetch_agol <- function( url, where, geometry, attachments){
   
-  con <- connection
   u <- url
-  w <- ifelse(is.null(where) || where == "" || is.na(where),"OBJECTID > 0")
+  w <- ifelse(!isTruthy(where) || where == "*","OBJECTID > 0",where)
   g <- ifelse(geometry == TRUE,"true","false")
   a <- attachments
   
+  r <- list("error" = NA, "data" = NA, "attach" = NA)
   
-  if (is.null(con) || is.null(u)) {
-    stop("'connection' and 'url' must be given")
+  if (is.null(u)) {
+    stop("'url' must be given")
   }
   if (is.null(geometry) || !geometry %in% c(TRUE, FALSE)) {
     stop("'geometry' argument must be one of: TRUE, FALSE")
@@ -613,19 +593,26 @@ fetch_agol <- function(connection, url, where, geometry, attachments){
   #url for querying AGOL
   url <- parse_url(paste(u,"/query",sep=""))
   
-  if(g == "true"){
-    url$query <- list(
-      where = w,
-      returnGeometry = g,
-      outFields = "*",
-      f = "geojson")
-  }else{
-    url$query <- list(
-      where = w,
-      returnGeometry = g,
-      outFields = "*",
-      f = "json")
-  }
+  # Original version which fetched geojson but returned all data types as char
+  # if(g == "true"){
+  #   url$query <- list(
+  #     where = w,
+  #     returnGeometry = g,
+  #     outFields = "*",
+  #     f = "geojson")
+  # }else{
+  #   url$query <- list(
+  #     where = w,
+  #     returnGeometry = g,
+  #     outFields = "*",
+  #     f = "json")
+  # }
+  
+  url$query <- list(
+    where = w,
+    returnGeometry = g,
+    outFields = "*",
+    f = "json")
   
   #Make the request and parse the data
   request <- build_url(url)
@@ -635,44 +622,78 @@ fetch_agol <- function(connection, url, where, geometry, attachments){
   }
   ,
   error = function(e){
-    stop("GET request on URL returned an error")
+    NA
   }
   )
+  
+  if(is.na(resp)){
+    r$error <- "Request on URL returned an error"
+    return(r)
+    }
   
   raw <- rawToChar(resp$content)
   Encoding(raw) <- "UTF-8"
   
+  d <- fromJSON(raw)
+  
+  #Extract data frame and fields
+  x <- d$features$attributes
+  dates <- grep("Date",d$fields$type)
+  x[dates] <- lapply(x[dates],date_correction) # correct dates to postgres format
+  
+  x$guid <- as.UUID(x$GlobalID)
+  x <- x[,-which(colnames(x)== "OBJECTID" | colnames(x) == "GlobalID")] #Drop AGOL id fields
+  
+  tracking <- which(colnames(x) == "last_edited_user" | colnames(x) == "last_edited_date" | colnames(x) == "created_user" | colnames(x) == "created_date")
+  colnames(x)[tracking] <- paste("source_",colnames(x)[tracking],sep="")    #change tracking column names
+  
   if(g == "true"){
-    d <- geojsonsf::geojson_sf(raw)
-    dates <- grep("date",colnames(d))
-    for(i in 1:length(dates)){
-      d[,dates[i]][[1]] <- date_correction(d[,dates[i]][[1]]) # correct dates to postgres format
+    if(d$geometryType == "esriGeometryPoint"){
+      x$x <- d$features$geometry$x
+      x$y <- d$features$geometry$y
+      x <- st_as_sf(x,coords = c("x","y"))
+      x <- st_set_crs(x,d$spatialReference$wkid)
     }
-    
-    d$guid <- as.UUID(d$GlobalID)
-    d <- d[,-which(colnames(d)== "OBJECTID" | colnames(d) == "GlobalID")] #Drop AGOL id fields
-    
-    tracking <- which(colnames(d) == "last_edited_user" | colnames(d) == "last_edited_date" | colnames(d) == "created_user" | colnames(d) == "created_date")
-    colnames(d)[tracking] <- paste("source_",colnames(d)[tracking],sep="")    #change tracking column names
-    
-    data <- d
-  }else{
-    d <- fromJSON(raw)
-    
-    #Extract data frame and fields
-    x <- d$features$attributes
-    
-    dates <- grep("Date",d$fields$type)
-    x[dates] <- lapply(x[dates],date_correction) # correct dates to postgres format
-    
-    x$guid <- as.UUID(x$GlobalID)
-    x <- x[,-which(colnames(x)== "OBJECTID" | colnames(x) == "GlobalID")] #Drop AGOL id fields
-    
-    tracking <- which(colnames(x) == "last_edited_user" | colnames(x) == "last_edited_date" | colnames(x) == "created_user" | colnames(x) == "created_date")
-    colnames(x)[tracking] <- paste("source_",colnames(x)[tracking],sep="")    #change tracking column names
-    
-    data <- x
   }
+  
+  data <- x
+  
+  # Original version for processing geojson
+  # if(g == "true"){
+  #   d <- geojsonsf::geojson_sf(raw)
+  #   # correct dates to postgres format
+  #   dates <- grep("date",colnames(d))
+  #   for(i in 1:length(dates)){
+  #     eval(parse(
+  #       text = paste0("d$",colnames(d)[dates[i]],"<- lapply(d$",colnames(d)[dates[i]],",date_correction)")
+  #     )) # Can't get this to work any other way - other column selectors bring sf geom column along too
+  #   }
+  #   
+  #   d$guid <- as.UUID(d$GlobalID)
+  #   d <- d[,-which(colnames(d)== "OBJECTID" | colnames(d) == "GlobalID")] #Drop AGOL id fields
+  #   
+  #   tracking <- which(colnames(d) == "last_edited_user" | colnames(d) == "last_edited_date" | colnames(d) == "created_user" | colnames(d) == "created_date")
+  #   colnames(d)[tracking] <- paste("source_",colnames(d)[tracking],sep="")    #change tracking column names
+  #   
+  #   dates <- grep("Date",fromJSON(raw)$fields$type)
+  #   
+  #   data <- d
+  # }else{
+  #   d <- fromJSON(raw)
+  #   
+  #   #Extract data frame and fields
+  #   
+  #   dates <- grep("Date",d$fields$type)
+  #   x[dates] <- lapply(x[dates],date_correction) # correct dates to postgres format
+  #   
+  #   x$guid <- as.UUID(x$GlobalID)
+  #   x <- x[,-which(colnames(x)== "OBJECTID" | colnames(x) == "GlobalID")] #Drop AGOL id fields
+  #   
+  #   tracking <- which(colnames(x) == "last_edited_user" | colnames(x) == "last_edited_date" | colnames(x) == "created_user" | colnames(x) == "created_date")
+  #   colnames(x)[tracking] <- paste("source_",colnames(x)[tracking],sep="")    #change tracking column names
+  #   
+  #   data <- x
+  # }
   
   if(a == TRUE){
     #url for querying AGOL attachments
@@ -712,75 +733,316 @@ fetch_agol <- function(connection, url, where, geometry, attachments){
     attach <- NA
   }
   
-  return(list("data" = data, "attach" = attach))
+  r$data <- data
+  r$attach <- attach
+  return(r)
 }
 
-import_agol <- function(con, u, w, g, a, s, t){
+import_agol <- function(con, 
+                        u, # service url
+                        w, # where clause
+                        g, # include geometry?
+                        a, # include attachments ?
+                        f, # max attachment size in kb
+                        d, # max width / height to resize to
+                        s, # schema to import to
+                        t # table to import to
+                        ){
+  result <- list(error = NA, d = NA, a = 0)
   
-  data <- fetch_agol(con, u, w, g, a)$data
-  attach <- fetch_agol(con, u, w, g, a)$attach
+  f <- fetch_agol(con, u, w, g, a)
   
-  #FIX FOR NON-SF CASE
-  
-  if(class(data)[[1]] == "sf"){
-    dbGetQuery(con, paste0("ALTER TABLE ",s,".",t," ALTER COLUMN geom TYPE geometry(POINT, 880001) using ST_SETSRID(geom, 880001);"))
-    write <- rpostgis::pgWriteGeom(conn = con, 
-                                   name = c(s,t),
-                                   data.obj = data,
-                                   geom = "geom",
-                                   overwrite = FALSE,
-                                   partial.match = TRUE,
-                                   upsert.using = c("guid")
-    )
-    dbGetQuery(con, paste0("ALTER TABLE ",s,".",t," ALTER COLUMN geom TYPE geometry(POINT, 27700) using ST_SETSRID(geom, 27700);"))
+  if(!is.na(f$error)){
+    result$error <- f$error # What about invalid where clause?
   }
-  else{
-    write <- rpostgis::pgInsert(conn = con, 
-                                name = c(s,t),
-                                data.obj = data,
-                                overwrite = FALSE,
-                                partial.match = TRUE,
-                                upsert.using = c("guid")
-    )
+  if(!is.na(f$data) && nrow(f$data) == 0){
+    result$error <- "Inputs valid but no data to import!"
   }
-  
-  
-  if(a == TRUE){
-    for(i in 1:nrow(attach)){
-      #Check attachment not already in attachment table
-      dl <- dbGetQuery(con, 
-                       paste0("SELECT COUNT(guid) FROM (SELECT guid FROM ",s,".",t,"_attach WHERE guid IN ('b98dc6d4-a244-4bbf-9c61-9f8dc8f1b6cb')) AS A")
-      ) 
-      if(dl == 0){
-        #Download and convert attachment to binary
-        tf <- tempfile(fileext=paste0(".",
-                                      substr(attach[i,"att_type"],7,10000)
-        )
-        )
-        download.file(attach[i,c("url")], tf, mode = "wb")
-        z <- readRaw(tf)
-        r <- attach[i,]
-        r$att <- paste0("\\x", paste(z$fileRaw, collapse = ""))
-        
-        #Upsert attachment
-        insert_attach <- pgInsert(
-          con,
-          name = c(s,paste0(t,"_attach")),
-          data.obj = r,
-          df.mode = FALSE,
-          partial.match = TRUE,
-          overwrite = FALSE,
-          upsert.using = c("guid")
-        )
-      } 
+  if(!is.na(f$data) && nrow(f$data) > 0){
+    data <- f$data
+    attach <- f$attach
+    
+    
+    # Problem here for changing SRS when not table owner, or service not same SRS as 27700?
+    if(class(data)[[1]] == "sf"){
+      
+      # Need to write to temporary table then insert into desired table
+      write <- rpostgis::pgWriteGeom(conn = con, 
+                                     name = c(s,paste0(t,"_temp")),
+                                     data.obj = data,
+                                     geom = "geometry",
+                                     overwrite = FALSE,
+                                     partial.match = TRUE,
+                                     upsert.using = c("guid")
+                                     )
+      
+    }
+    else{
+      write <- rpostgis::pgInsert(conn = con, 
+                                  name = c(s,t),
+                                  data.obj = data,
+                                  overwrite = FALSE,
+                                  partial.match = TRUE,
+                                  upsert.using = c("guid")
+      )
+    }
+    result$d <- write
+    
+    if(a == TRUE){
+      for(i in 1:nrow(attach)){
+        #Check attachment not already in attachment table
+        dl <- dbGetQuery(con, 
+                         paste0("SELECT COUNT(guid) FROM (SELECT guid FROM ",s,".",t,"_attach WHERE guid IN ('b98dc6d4-a244-4bbf-9c61-9f8dc8f1b6cb')) AS A")
+        ) 
+        if(dl == 0){
+          #Download and convert attachment to binary if jpeg
+          
+          if(attach[i,c("att_type")] == "image/jpeg"){
+            tf <- tempfile(fileext=paste0(".",
+                                          substr(attach[i,"att_type"],7,10000)
+            )
+            )
+            download.file(attach[i,c("url")], tf, mode = "wb")
+            if(attach[i,c("att_size")] > f * 1000){
+              img <- magick::image_read(tf)
+              
+              g <- magick::geometry_size_pixels(width = d, height = d, preserve_aspect = TRUE)
+              image_write(image_resize(img,geometry =g),tf,quality=20, compression = "JPEG")
+            }
+            
+            z <- readRaw(tf)
+            r <- attach[i,]
+            r$att <- paste0("\\x", paste(z$fileRaw, collapse = ""))
+            
+            #Upsert attachment
+            insert_attach <- pgInsert(
+              con,
+              name = c(s,paste0(t,"_attach")),
+              data.obj = r,
+              df.mode = FALSE,
+              partial.match = TRUE,
+              overwrite = FALSE,
+              upsert.using = c("guid")
+            )
+            result$a <- result$a + insert_attach
+          }
+        } 
+      }
     }
   }
+  return(result)
 }
-# Global database tables and lookups ----
+# Database connection function  ----
+drv <- dbDriver("PostgreSQL", max.con = 100)
+fenDb <- function(u, p){
+  dbPool(drv, 
+         user = u, 
+         password = p,
+         host = "data-fht.postgres.database.azure.com", 
+         port = 5432, 
+         dbname = "fen_database")
+}
+
+fenDb0 <- function(u, p){
+  dbConnect(drv, 
+            user = u, 
+            password = p,
+            host = "data-fht.postgres.database.azure.com", 
+            port = 5432, 
+            dbname = "fen_database")
+}
+
+fenDbTest <- function(u, p){
+  DBI::dbCanConnect(RPostgres::Postgres(), 
+                    user = u, 
+                    password = p,
+                    host = "data-fht.postgres.database.azure.com", 
+                    port = 5432, 
+                    dbname = "fen_database")
+}
+
+# App database connect pool ----
+con_global <- fenDb("fenportal","Alkal1n3F3ns!")
+
+onStop(function() {
+  pool::poolClose(con_global)
+})
+
+# Database tables loading function ----
+
+app_tables <- function(tables,t){
+  # Query definitions ----
+  q_sites0 <- "SELECT id, site, county, geom AS geom FROM spatial.fen_sites ORDER BY site"
+  q_subsites0 <- "SELECT 
+                            ss.id, 
+                            ss.site, 
+                            s.site AS site_name, 
+                            ss.subsite, 
+                            ss.geom AS geom 
+                            FROM 
+                              spatial.fen_subsites ss,
+                              spatial.fen_sites s
+                            WHERE 
+                              ss.site = s.id
+                            ORDER BY site, subsite"
+  q_surveys <- "SELECT
+                            s.id AS id,
+                            s.survey,
+                            s.survey_type AS survey_type,
+                            s.start_date,
+                            s.end_date,
+                            s.start_year,
+                            s.end_year,
+                            s.source,
+                            s.project AS projectid,
+                            s.sharing AS sharing_code,
+                            s.copyright,
+                            s.description AS description,
+                            s.url,
+                            s.created_user,
+                            s.last_edited_user,
+                            s.created_date,
+                            s.last_edited_date,
+                            st.description AS survey_type_description,
+                            sh.description AS sharing,
+                            p.project AS project
+                            FROM
+                              records.surveys s,
+                              records.projects p,
+                              lookups.lookup_sharing sh,
+                              lookups.lookup_survey_types st
+                            WHERE
+                              s.project = p.id AND
+                              s.sharing = sh.code AND
+                              s.survey_type = st.code
+                            ORDER BY s.id"
+  q_projects <- "SELECT * FROM records.projects ORDER BY project"
+  q_plots <- "SELECT p.id,
+                      ST_TRANSFORM(p.geom, 4326) AS geom,
+                      p.site AS site,
+                      p.subsite AS subsite,
+                      p.transect,
+                      p.plot,
+                      p.plot_reference,
+                      p.gridref,
+                      p.transect_side,
+                      p.dim,
+                      p.note,
+                      p.created_user,
+                      p.created_date,
+                      p.last_edited_user,
+                      p.last_edited_date,
+                      s.site AS site_name,
+                      ss.subsite AS subsite_name
+                      FROM (spatial.monitoring_vegetation p
+                            LEFT JOIN spatial.fen_sites s ON p.site = s.id) LEFT JOIN
+                            spatial.fen_subsites ss ON ss.id = NULLIF(p.subsite,0)
+                      ORDER BY site_name, plot_reference"
+  q_hydro_installs0 <- "SELECT 
+                         A.id AS id,
+                         A.install_name,
+                         B.id AS site, B.site AS site_name,
+                         A.install_type AS install_type,
+                         C.description AS install_type_description,
+                         A.install_date,
+                         A.install_location,
+                         A.install_reason,
+                         A.installed_by,
+                         A.install_depth,
+                         A.install_protrusion,
+                         A.install_geology,
+                         A.install_hydrogeo,
+                         A.install_hydroeco,
+                         ST_TRANSFORM(A.geom, 4326) AS geom
+                     FROM 
+                        spatial.monitoring_hydro_installs A, 
+                        spatial.fen_sites B, 
+                        lookups.lookup_hydro_install C
+                     WHERE 
+                      A.site = B.id AND 
+                      A.install_type = C.code 
+                    ORDER BY B.site, A.install_name"
+  # Download tables ----
+  future_promise({
+    con <- poolCheckout(con_global)
+    if("sites" %in% t && !isTruthy(tables$sites0)){
+      sites0 <- st_read(dsn = con, query = q_sites0, geometry_column = "geom")
+    }else{
+      sites0 <-NA
+    }
+    if("subsites" %in% t && !isTruthy(tables$subsites0)){
+      subsites0 <- st_read(dsn = con, query = q_subsites0, geometry_column = "geom")
+    }else{
+      subsites0 <- NA
+    }
+    if("surveys" %in% t && !isTruthy(tables$surveys)){
+      surveys <- dbGetQuery(con, q_surveys)
+    }else{
+      surveys <- NA
+    }
+    if("projects" %in% t && !isTruthy(tables$projects)){
+      projects <- dbGetQuery(con, q_projects)
+    }else{
+      projects <- NA
+    }
+    if("plots" %in% t && !isTruthy(tables$plots)){
+      plots <- st_read(dsn = con, query = q_plots, geometry_column = "geom")
+    }else{
+      plots <- NA
+    }
+    if("hydro_installs" %in% t && !isTruthy(tables$hydro_installs0)){
+      hydro_installs0 <- st_read(dsn = con, query = q_hydro_installs0, geometry_column = "geom")
+    }else{
+      hydro_installs0 <- NA
+    }
+    poolReturn(con)
+    return(list(
+      "sites0" = sites0,
+      "subsites0" = subsites0,
+      "surveys" = surveys,
+      "projects" = projects,
+      "plots" = plots,
+      "hydro_installs0" = hydro_installs0
+    ))
+  })%...>% (function(r){
+    a <- 0
+    
+    if("sites" %in% t && !isTruthy(tables$sites)){
+      tables$sites0 <- r$sites0
+      tables$sites <- st_drop_geometry(r$sites0)
+      a <- a + 1
+    }
+    if("subsites" %in% t && !isTruthy(tables$subsites)){
+      tables$subsites0 <- r$subsites0
+      tables$subsites <- st_drop_geometry(r$subsites0)
+      a <- a + 1
+    }
+    if("surveys" %in% t && !isTruthy(tables$surveys)){
+      tables$surveys <- r$surveys
+      a <- a + 1
+    }
+    if("projects" %in% t && !isTruthy(tables$projects)){
+      tables$projects <- r$projects
+      a <- a + 1
+    }
+    if("plots" %in% t && !isTruthy(tables$plots)){
+      tables$plots <- r$plots
+      a <- a + 1
+    }
+    if("hydro_installs" %in% t && !isTruthy(tables$hydro_installs)){
+      tables$hydro_installs0 <- r$hydro_installs0
+      tables$hydro_installs <- st_drop_geometry(r$hydro_installs0)
+      a <- a + 1
+    }
+  })
+}
+
+# App database tables and lookups ----
 
 #uksi
 uksi_full <- read.csv("./www/uksi.csv", header = TRUE)
 uksi_rec <- read.csv("./www/uksi_rec.csv", header = TRUE)
+uksi_pl_rec <- uksi_rec[uksi_rec$informal_group %in% c("flowering plant","fern","conifer","stonewort","horsetail","clubmoss","hornwort","liverwort","moss","quillwort"),]
 
 # Taxon names with qualifiers and authorities
 choices_uksi <- uksi_full$nbn_taxon_version_key
@@ -790,6 +1052,10 @@ names(choices_uksi) <- uksi_full$full_name
 choices_uksi_1 <- uksi_full$nbn_taxon_version_key
 names(choices_uksi_1) <- uksi_full$name
 
+# Taxon plant choices
+choices_uksi_plants <- uksi_pl_rec$nbn_taxon_version_key
+names(choices_uksi_plants) <- uksi_pl_rec$full_name
+
 # Taxon groups
 tgps <- read.csv("./www/taxon_groups.csv",header= TRUE)
 choices_tgps <- tgps$x
@@ -798,7 +1064,6 @@ choices_tgps <- tgps$x
 choices_fenspp <- c(0,1,2)
 names(choices_fenspp) <- c("Select an option","All fen species", "Alkaline fen species")
 
-con_global <- fenDb("fenportal","Alkal1n3F3ns!")
 con_global0 <- poolCheckout(con_global)
 
 fspp <- dbGetQuery(con_global0, "SELECT nbn_taxon_version_key_for_recommended_name, taxon_latest, alkaline_fen_oxon AS alkaline_fen FROM lookups.fen_spp ORDER BY taxon_latest")
