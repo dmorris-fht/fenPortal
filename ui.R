@@ -34,23 +34,24 @@ dashboardPage(
       
       div(h4("Biological data & monitoring"),style="margin-left:10px"),
       
-      menuItem("Manage records",icon = icon("clipboard-list"),expandedName = "records",
+      menuItem("Biological records",icon = icon("clipboard-list"),expandedName = "records",
                menuSubItem("Search records", tabName  = "queryRecords"),
                menuSubItem("Enter records", tabName = "enterRecords"),
                menuSubItem("Import records", tabName = "importRecords")
                ),
       
       menuItem("Vegetation monitoring",icon = icon("leaf"),expandedName = "veg",
-               menuSubItem("Enter data", tabName = "vegManage"),
+               menuSubItem("Enter & manage data", tabName = "vegManage"),
                menuSubItem("Analyse vegetation data", tabName = "vegAnalyse")
                
                ),
 
-        menuItem("Monitoring tools", icon = icon("tools"), expandedName = "monTools",
+        menuItem("Survey & monitoring tools", icon = icon("tools"), expandedName = "monTools",
                  menuSubItem("Plant lists", tabName = "plantLists"),
-                 menuSubItem("Vegetation data", tabName = "vegLists")
+                 menuSubItem("Vegetation data", tabName = "vegLists"),
+                 menuSubItem("Import site observations", tabName = "importObs")
         ),
-        menuItem("Species introductions", icon = icon("plus"), tabName = "spIntros"),
+        menuItem("Species introductions", icon = icon("plus"), tabName = "spIntro"),
         menuItem("Data sharing", icon = icon("share"), tabName = "dataSharing"),
       
       
@@ -148,12 +149,25 @@ dashboardPage(
               )
       ),
       
+      tabItem(tabName = "importObs",
+              fluidRow(
+                importObsUI("importObs")
+              )
+      ),
+      
       tabItem(tabName = "dataSharing",
               fluidRow(
                 dataSharingUI("dataSharing")
               )
       )
       ,
+      tabItem(tabName = "spIntro",
+              fluidRow(
+                spIntroUI("spIntros")
+              )
+      )
+      ,
+      
       tabItem(tabName = "explore",
                 fluidRow(
                   exploreUI("exploreHydro")
