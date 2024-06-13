@@ -1,9 +1,11 @@
 queryRecordsUI <- function(id){
   ns <- NS(id)
   tagList(
+    withSpinner(
+    tagList(
     column(12,
            #Query form ----
-           tabsetPanel(id = "tabset",  
+           tabsetPanel( 
              ##Form fields ----
           
              tabPanel("Search",id = ns("query"),
@@ -18,10 +20,10 @@ queryRecordsUI <- function(id){
                                    actionButton(ns("info"),label = "Instructions",icon = icon("info"))
                                  ),
                                  div(style="float:left",
-                                     actionButton(ns("runQuery"),label = "Search",icon=icon("search"))
+                                     shiny::actionButton(ns("runQuery"),label = "Search",icon=icon("search"))
                                      ),
                                  div(style="float:left",id = ns("dlDiv"),class="buttonHidden",
-                                     downloadButton(ns("dlQuery"),label = "Download results", icon = icon("download"))
+                                     shiny::downloadButton(ns("dlQuery"),label = "Download results", icon = icon("download"))
                                      )
                                 )   
                              ),
@@ -91,7 +93,7 @@ queryRecordsUI <- function(id){
                       box(title = "Species", width = 6, solidHeader = T,collapsible = T, collapsed = F,
                            column(12,
                                     div(style="Width:100%; display:inline-block; padding-bottom: 0; margin-bottom:0", 
-                                    column(6,
+                                    column(12,
                                            div(style="float:left;width:100%",
                                                selectizeInput(
                                                  inputId = ns("taxon_group"),
@@ -102,16 +104,6 @@ queryRecordsUI <- function(id){
                                                ) 
                                            )
                                            ),
-                                    column(6,
-                                           div(style="float:left;width:100%",
-                                              selectInput(
-                                                inputId = ns("fenspp"),
-                                                label = "Fen plant species",
-                                                choices = choices_fenspp,
-                                                selected = ""
-                                              ) 
-                                           )
-                                         ),
                                     column(12,
                                           div(style="float:left;width:100%",
                                               selectizeInput(
@@ -122,13 +114,22 @@ queryRecordsUI <- function(id){
                                                 options = list(placeholder = 'Select one or more taxa')
                                               ) 
                                           )
+                                    ),
+                                    column(6,
+                                           div(style="float:left;width:100%",
+                                               selectInput(
+                                                 inputId = ns("fenspp"),
+                                                 label = "Fen plant species",
+                                                 choices = choices_fenspp,
+                                                 selected = ""
+                                               ) 
+                                           )
                                     )
                              )
                              )
                       )
                         ,
 
-                        
                       ### Date fields ----
                       box(title = "Dates", width = 6, solidHeader = T,collapsible = T, collapsed = T,
                       column(12,
@@ -184,6 +185,7 @@ queryRecordsUI <- function(id){
                                           inputId = ns("survey_type"),
                                           label = "Data source type(s)",
                                           choices = c(""),
+                                          multiple = TRUE,
                                           options = list(placeholder = 'Select one or more data source types')
                                         ) 
                                     )
@@ -222,9 +224,9 @@ queryRecordsUI <- function(id){
                       ),
                       
                       ## Admin fields ----
-                    box(title = "Admin", width = 12, solidHeader = T,collapsible = T, collapsed = T,
+                    box(title = "Admin", width = 6, solidHeader = T,collapsible = T, collapsed = T,
                       column(12,
-                             column(4,
+                             column(6,
                                     textInput(
                                       inputId = ns("created_date"),
                                       label = "Record created on",
@@ -232,7 +234,7 @@ queryRecordsUI <- function(id){
                                       placeholder = "Year or date in format dd/mm/yyyy"
                                     ) 
                                     ),
-                             column(4,
+                             column(6,
                                     textInput(
                                       inputId = ns("created_date_start"),
                                       label = "Record created from",
@@ -240,7 +242,7 @@ queryRecordsUI <- function(id){
                                       placeholder = "Start year or date in format dd/mm/yyyy"
                                       ) 
                                     ),
-                             column(4,
+                             column(6,
                                     textInput(
                                       inputId = ns("created_date_end"),
                                       label = "Record created before",
@@ -248,7 +250,7 @@ queryRecordsUI <- function(id){
                                       placeholder = "End year or date in format dd/mm/yyyy"
                                       ) 
                                     ),
-                             column(4,
+                             column(6,
                                     textInput(
                                       inputId = ns("edited_date"),
                                       label = "Record last edited on",
@@ -256,7 +258,7 @@ queryRecordsUI <- function(id){
                                       placeholder = "Year or date in format dd/mm/yyyy"
                                     ) 
                              ),
-                             column(4,
+                             column(6,
                                     textInput(
                                       inputId = ns("edited_date_start"),
                                       label = "Record last edited from",
@@ -264,7 +266,7 @@ queryRecordsUI <- function(id){
                                       placeholder = "Start year or date in format dd/mm/yyyy"
                                     ) 
                              ),
-                             column(4,
+                             column(6,
                                     textInput(
                                       inputId = ns("edited_date_end"),
                                       label = "Record last edited before",
@@ -272,7 +274,7 @@ queryRecordsUI <- function(id){
                                       placeholder = "End year or date in format dd/mm/yyyy"
                                     ) 
                              ),
-                             column(4,
+                             column(6,
                                     div(style="float:left;width:100%",
                                         textInput(
                                           inputId = ns("guid"),
@@ -294,27 +296,37 @@ queryRecordsUI <- function(id){
                       column(12,
                         div(
                           style = "font-size:12px;padding: 0 ",
-                          withSpinner(DT::DTOutput(outputId = ns("resultsTable")),type = 7)
+                          withSpinner(DT::DTOutput(outputId = ns("resultsTable")),type = 7, caption = "Loading records")
                         )                             )
                     ),
               tabPanel("Map",
                        column(12,
                               h3("Map of search results"),
                               column(7,
-                                     withSpinner(leafletOutput(ns("resultsMap")),type = 7)
+                                     withSpinner(leafletOutput(ns("resultsMap")),type = 7, caption = "Loading map")
                                      ),
                               column(5,
                                      div(
                                        style = "font-size:12px;padding: 0 ",
-                                       withSpinner(DT::DTOutput(outputId = ns("mapTable")),type = 7)
+                                       withSpinner(DT::DTOutput(outputId = ns("mapTable")),type = 7, caption = "Loading records")
                                      )
                                      )
                                   )    
                     )
            )
            )
-    ,
-    tags$script(src ="script.js")
+    )
+  ,
+  id = ns("module"),
+  type = 4,
+  size = 2,
+  proxy.height = "100%",
+  hide.ui = TRUE,
+  caption = "Loading module"),
+  tags$script(src ="script.js"),
+    tags$script(
+      HTML("$('#queryRecords-module').parent().removeClass('shiny-spinner-hidden')")
+      )
   )
 }
 
@@ -322,12 +334,32 @@ queryRecordsServer <- function(id, login, tables) {
   moduleServer(
     id,
     function(input, output, session) {
+      ns <- session$ns
       
       role <- login$role
       user <- login$username
       password <- login$password
       
-      # Site boundary reactive ----
+      # Module initialisation ----
+      isolate({
+        app_tables(tables, c("sites","subsites","surveys","projects"))
+      })
+      
+      observe({
+        req(tables$sites)
+        req(tables$surveys)
+        req(tables$subsites)
+        req(tables$projects)
+        
+        runjs(
+          paste0(
+            "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
+                 $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
+          )
+        )
+      })
+      
+      ## Site boundary reactive
       sites1 <- reactive({
         req(tables$sites)
         return(
@@ -355,16 +387,6 @@ queryRecordsServer <- function(id, login, tables) {
           return(c(""))
         }
       })
-      #   
-      # choices_site_1 <- reactive({
-      #   if(isTruthy(tables$sites)){
-      #     c <- tables$sites$id
-      #     names(c) <- tables$sites$site
-      #   }
-      #   else{
-      #     return(c(""))
-      #   }
-      # })
       
       choices_county <- reactive({
         if(isTruthy(tables$sites)){
@@ -535,7 +557,7 @@ queryRecordsServer <- function(id, login, tables) {
       
       updateSelectizeInput(session,
                            "sharing",
-                           choices=choices_st,
+                           choices=choices_sh,
                            selected = "",
                            server = FALSE,
                            options = list(
@@ -544,7 +566,6 @@ queryRecordsServer <- function(id, login, tables) {
                             )
                            )
       
-      survey <- tables$surveys
       choices_survey_0 <- reactive({
         if(isTruthy(tables$surveys)){
           c <- tables$surveys$id
@@ -722,51 +743,52 @@ queryRecordsServer <- function(id, login, tables) {
       # Reactive for query results
       rv <- reactiveValues(
         sf = NA,
-        df = data.frame(
-          id = numeric(),
-          site_record = character(),
-          site = numeric(),
-          subsite = numeric(),
-          gridref = character(),
-          taxon_nbn = character(),
-          quantity = character(),
-          status = character(),
-          sex = character(),
-          stage = character(),
-          note = character(),
-          record_date = Date(),
-          record_date_end = Date(),
-          start_year = numeric(),
-          end_year = numeric(),
-          start_month = numeric(),
-          end_month = numeric(),
-          recorder = character(),
-          determiner = character(),
-          method = character(),
-          survey = numeric(),
-          created_user = character(),
-          created_date = Date(),
-          last_edited_user = character(),
-          last_edited_date = Date(),
-          guid = character(),
-          verification = numeric(),
-          verification_user = character(),
-          verification_date = Date(),
-          verification_note = character(),
-          site_name = character(),
-          subsite_name = character(),
-          taxon_name = character(),
-          taxon_authority = character(),
-          taxon_qualifier = character(),
-          survey_name = character(),
-          survey_start_date = Date(),
-          survey_end_date = Date(),
-          survey_start_year = numeric(),
-          survey_end_year = numeric(),
-          verification_description = character(),
-          record_date_start = Date(),
-          Buttons = character()
-        ),
+        df = NA,
+        # df = data.frame(
+        #   id = numeric(),
+        #   site_record = character(),
+        #   site = numeric(),
+        #   subsite = numeric(),
+        #   gridref = character(),
+        #   taxon_nbn = character(),
+        #   quantity = character(),
+        #   status = character(),
+        #   sex = character(),
+        #   stage = character(),
+        #   note = character(),
+        #   record_date = Date(),
+        #   record_date_end = Date(),
+        #   start_year = numeric(),
+        #   end_year = numeric(),
+        #   start_month = numeric(),
+        #   end_month = numeric(),
+        #   recorder = character(),
+        #   determiner = character(),
+        #   method = character(),
+        #   survey = numeric(),
+        #   created_user = character(),
+        #   created_date = Date(),
+        #   last_edited_user = character(),
+        #   last_edited_date = Date(),
+        #   guid = character(),
+        #   verification = numeric(),
+        #   verification_user = character(),
+        #   verification_date = Date(),
+        #   verification_note = character(),
+        #   site_name = character(),
+        #   subsite_name = character(),
+        #   taxon_name = character(),
+        #   taxon_authority = character(),
+        #   taxon_qualifier = character(),
+        #   survey_name = character(),
+        #   survey_start_date = Date(),
+        #   survey_end_date = Date(),
+        #   survey_start_year = numeric(),
+        #   survey_end_year = numeric(),
+        #   verification_description = character(),
+        #   record_date_start = Date(),
+        #   Buttons = character()
+        # ),
         dt_row = NULL, add_or_edit = 0,
         edit_button = NULL)
       
@@ -823,28 +845,49 @@ queryRecordsServer <- function(id, login, tables) {
       # Data table definitions ----
       output$resultsTable <- DT::renderDT(
         {
-          shiny::isolate(rv$df)
-          
-          x <- rv$df[,c("taxon_name","site_name","subsite_name","gridref","record_date","survey_name","Buttons")]
-
-          return(x)
+          DT::datatable(data.frame(taxon_name = character(),
+                          site_name = character(),
+                          subsite_name = character(),
+                          gridref = character(),
+                          date_range = character(),
+                          survey_name = character(),
+                          Buttons = character(),
+                          verification = character())
+                        ,
+                        escape = F,
+                        rownames = FALSE,
+                        selection = 'single',
+                        filter = list(position='top'),
+                        colnames =  c("Taxon","Site","Subsite","Gridref","Date","Date source","",""),
+                        options = list(processing = TRUE,
+                                       dom = 'tlpi',
+                                       columnDefs = list(
+                                         list(orderable = FALSE, targets = c(6)),
+                                         list(targets = c(6),searchable = FALSE),
+                                         list(width = '60px',targets=c(6)),
+                                         list(visible = FALSE,targets = c(7))
+                                       ),
+                                       extensions = c("FixedHeader", "Scroller"),
+                                       fixedHeader = TRUE,
+                                       scrollY = "50vh"
+                                       )
+                        ) %>% formatStyle("verification",target='row',backgroundColor = styleEqual(
+                          c(1,
+                            2,3,4,
+                            6,7,8,9,10,
+                            11,
+                            -1
+                            ),
+                          c("rgb(0, 255, 0,0.3)",
+                            "rgb(255, 0, 0,0.3)","rgb(255, 0, 0,0.3)","rgb(255, 0, 0,0.3)",
+                            "rgb(255,178,102,0.3)","rgb(255,178,102,0.3)","rgb(255,178,102,0.3)","rgb(255,178,102,0.3)","rgb(255,178,102,0.3)",
+                            "rgb(255,255,0,0.3)",
+                            "rgb(255,51,153,0.3)"
+                            )
+                          )) # Colour rows by verification state
         }
-        ,
-        server = TRUE,
-        escape = F,
-        rownames = FALSE,
-        selection = 'single',
-        colnames =  c("Taxon","Site","Subsite","Gridref","Date","Date source",""),
-        options = list(processing = TRUE,
-                       columnDefs = list(
-                         list(orderable = FALSE, targets = c(6)),
-                         list(width = '60px',targets=c(6))
-                       ),
-                       extensions = c("FixedHeader"),#, "Scroller")
-                       fixedHeader = TRUE,
-                       scrollY = "50vh"
-        )
-      ) 
+        ,server = TRUE
+        ) 
       
       proxy_DT <- DT::dataTableProxy("resultsTable")
       
@@ -858,19 +901,20 @@ queryRecordsServer <- function(id, login, tables) {
         escape = FALSE,
         rownames = FALSE,
         selection = 'single',
+        filter = list(position='top'),
         colnames = c("Taxon","Site","Subsite","Date",""),
         options = list(processing = TRUE,
-                       searching=FALSE,
-                       lengthChange = FALSE,
+                       dom = 'tlpi',
                        language = list(
                          infoEmpty = "No records",
                          emptyTable = "No records selected in map"
                          ),
                        columnDefs = list(
                          list(orderable = FALSE, targets = c(4)),
+                         list(targets = c(4),searchable = FALSE),
                          list(width = '60px',targets=c(4))
                        ),
-                       extensions = c("FixedHeader"),#, "Scroller")
+                       extensions = c("FixedHeader","Scroller"),
                        fixedHeader = TRUE,
                        scrollY = "55vh"
                        )
@@ -893,228 +937,273 @@ queryRecordsServer <- function(id, login, tables) {
       })
       
       observeEvent(input$current_id, {
-        
-        #Edit button
-        if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "query_edit")){      
-          rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
-          
-          d <- rv$df[rv$dt_row,]
-          
-          record_modal_dialog(session = session, d, edit = TRUE,
-                              c1=choices_site(),
-                              c2=choices_subsite_0(),
-                              c3=choices_uksi,
-                              c4=choices_survey_0()
-                              )
-
-          shinyjs::disable("modal_created_user")
-          shinyjs::disable("modal_created_date")
-          shinyjs::disable("modal_last_edited_user")
-          shinyjs::disable("modal_last_edited_date")
-          shinyjs::disable("modal_guid")
-          shinyjs::enable("modal_site")
-          shinyjs::enable("modal_subsite")
-          shinyjs::enable("modal_gridref")
-          shinyjs::enable("modal_site_record")
-          shinyjs::enable("modal_taxon_nbn")
-          shinyjs::enable("modal_quantity")
-          shinyjs::enable("modal_status")
-          shinyjs::enable("modal_sex")
-          shinyjs::enable("modal_stage")
-          shinyjs::enable("modal_recorder")
-          shinyjs::enable("modal_determiner")
-          shinyjs::enable("modal_method")
-          shinyjs::enable("modal_survey")
-          shinyjs::enable("modal_record_date")
-          shinyjs::enable("modal_start_year")
-          shinyjs::enable("modal_start_month")
-          shinyjs::enable("modal_record_date_end")
-          shinyjs::enable("modal_end_year")
-          shinyjs::enable("modal_end_month")
-          shinyjs::enable("modal_note")
-          shinyjs::enable("modal_verification")
-          shinyjs::disable("modal_verification_user")
-          shinyjs::disable("modal_verification_date")
-          shinyjs::enable("modal_verification_note")
-
-          shinyjs::disable("final_edit")
-          
-          # Reactive to check for changes in form
-          changes <- reactive({
-            v1 <- replace_na(as.vector(unlist(d[1,c(2:10,18:21,12,14,16,13,15,17,11,27,30)])),"")
-            v2 <- replace_na(c(
-              blank(input$modal_site_record),
-              input$modal_site,
-              blank(input$modal_subsite),
-              blank(input$modal_gridref),
-              input$modal_taxon_nbn,
-              blank(input$modal_quantity),
-              blank(input$modal_status),
-              blank(input$modal_sex),
-              blank(input$modal_stage),
-              blank(input$modal_recorder),
-              blank(input$modal_determiner),
-              blank(input$modal_method),
-              blank(input$modal_survey),
-              blank(input$modal_record_date),
-              blank(input$modal_start_year),
-              blank(input$modal_start_month),
-              blank(input$modal_record_date_end),
-              blank(input$modal_end_year),
-              blank(input$modal_end_month),
-              blank(input$modal_note),
-              blank(input$modal_verification),
-              blank(input$modal_verification_note)
-            ),"")
-            return(sum(compareNA(v1,v2)) < length(v2))
-          })
-          
-          # Reactive to force validation note
-          validation_check <- reactive({
-            v3 <- unlist(d[1,c(27,30)])
-            v4 <- c(blank(input$modal_verification),
-                    blank(input$modal_verification_note))
-            return(sum(compareNA(v3,v4)) == 2 || sum(compareNA(v3,v4)) == 0)
-          })
-          
-          observe({
-            c <- subsite[subsite$site == input$modal_site,c("id")]
-            names(c) <- subsite[subsite$site == input$modal_site,c("subsite")]
-
-            updateSelectizeInput(
+        input$current_id
+        isolate({
+          #Edit button
+          if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "query_edit")){      
+            rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
+            
+            d <- rv$df[rv$dt_row,]
+            
+            record_modal_dialog(session = session, d, edit = TRUE,
+                                c1=choices_site(),
+                                c2=choices_subsite_0(),
+                                c3=choices_uksi,
+                                c4=choices_survey_0()
+            )
+            
+            shinyjs::disable("modal_created_user")
+            shinyjs::disable("modal_created_date")
+            shinyjs::disable("modal_last_edited_user")
+            shinyjs::disable("modal_last_edited_date")
+            shinyjs::disable("modal_guid")
+            shinyjs::enable("modal_site")
+            shinyjs::enable("modal_subsite")
+            shinyjs::enable("modal_gridref")
+            shinyjs::enable("modal_site_record")
+            shinyjs::enable("modal_taxon_nbn")
+            shinyjs::enable("modal_quantity")
+            shinyjs::enable("modal_status")
+            shinyjs::enable("modal_sex")
+            shinyjs::enable("modal_stage")
+            shinyjs::enable("modal_recorder")
+            shinyjs::enable("modal_determiner")
+            shinyjs::enable("modal_method")
+            shinyjs::enable("modal_survey")
+            shinyjs::enable("modal_record_date")
+            shinyjs::enable("modal_start_year")
+            shinyjs::enable("modal_start_month")
+            shinyjs::enable("modal_record_date_end")
+            shinyjs::enable("modal_end_year")
+            shinyjs::enable("modal_end_month")
+            shinyjs::enable("modal_note")
+            shinyjs::enable("modal_verification")
+            shinyjs::disable("modal_verification_user")
+            shinyjs::disable("modal_verification_date")
+            shinyjs::enable("modal_verification_note")
+            
+            shinyjs::disable("final_edit")
+            
+            # Reactive to check for changes in form
+            changes <- reactive({
+              v1 <- replace_na(as.vector(unlist(d[1,c(2:10,18:21,12,14,16,13,15,17,11,27,30)])),"")
+              v2 <- replace_na(c(
+                blank(input$modal_site_record),
+                input$modal_site,
+                blank(input$modal_subsite),
+                blank(input$modal_gridref),
+                input$modal_taxon_nbn,
+                blank(input$modal_quantity),
+                blank(input$modal_status),
+                blank(input$modal_sex),
+                blank(input$modal_stage),
+                blank(input$modal_recorder),
+                blank(input$modal_determiner),
+                blank(input$modal_method),
+                blank(input$modal_survey),
+                blank(input$modal_record_date),
+                blank(input$modal_start_year),
+                blank(input$modal_start_month),
+                blank(input$modal_record_date_end),
+                blank(input$modal_end_year),
+                blank(input$modal_end_month),
+                blank(input$modal_note),
+                blank(input$modal_verification),
+                blank(input$modal_verification_note)
+              ),"")
+              return(sum(compareNA(v1,v2)) < length(v2))
+            })
+            
+            # Reactive to force validation note
+            validation_check <- reactive({
+              v3 <- unlist(d[1,c(27,30)])
+              v4 <- c(blank(input$modal_verification),
+                      blank(input$modal_verification_note))
+              return(sum(compareNA(v3,v4)) == 2 || sum(compareNA(v3,v4)) == 0)
+            })
+            
+            observe({
+              c <- tables$subsites[tables$subsites$site == input$modal_site,c("id")]
+              names(c) <- tables$subsites[tables$subsites$site == input$modal_site,c("subsite")]
+              
+              updateSelectizeInput(
                 session,
                 "modal_subsite",
                 choices = c,
                 selected = d[4]
               )
-          })
-
-          ## Modal validation
-          iv_modal <- InputValidator$new()
-          iv_modal$add_rule("modal_site",sv_required())
-          iv_modal$add_rule("modal_taxon_nbn",sv_required())
-          iv_modal$add_rule("modal_survey",sv_required())
-          iv_modal$add_rule("modal_gridref",function(value){
-            v <- validate_gf(input$modal_gridref, 
-                             s = as.numeric(input$modal_site), 
-                             ss = as.numeric(input$modal_subsite),
-                             sites0 = tables$sites0,
-                             subsites0 = tables$subsites0)
-            if(v$error == 1 && isTruthy(input$modal_gridref)){
-              v$message
-            }
-          })
-          iv_modal$add_rule("modal_verification_note",function(value){
-            if(!validation_check()){
-              return("To change validation state, please add note")
-            }
-          })
-          iv_modal$enable()
-          
-          ## Modal edit button activation
-
-          observe({
-            req(input$modal_site)
-            req(input$modal_taxon_nbn)
-            req(input$modal_survey)
-            req(gfv()$error == 0)
+            })
             
-            if(changes() && validation_check()){
-              shinyjs::enable("final_edit")
-            }
-            else{
-              shinyjs::disable("final_edit")
-            }
-          })
-        }
+            ## Modal validation
+            iv_modal <- InputValidator$new()
+            iv_modal$add_rule("modal_site",sv_required())
+            iv_modal$add_rule("modal_taxon_nbn",sv_required())
+            iv_modal$add_rule("modal_survey",sv_required())
+            iv_modal$add_rule("modal_gridref",function(value){
+              v <- validate_gf(input$modal_gridref, 
+                               s = as.numeric(input$modal_site), 
+                               ss = as.numeric(input$modal_subsite),
+                               sites0 = tables$sites0,
+                               subsites0 = tables$subsites0)
+              if(v$error == 1 && isTruthy(input$modal_gridref)){
+                v$message
+              }
+            })
+            iv_modal$add_rule("modal_verification_note",function(value){
+              if(!validation_check()){
+                return("To change validation state, please add note")
+              }
+            })
+            iv_modal$enable()
+            
+            ## Modal edit button activation
+            
+            observe({
+              req(input$modal_site)
+              req(input$modal_taxon_nbn)
+              req(input$modal_survey)
+              req(gfv()$error == 0)
+              
+              if(changes() && validation_check()){
+                shinyjs::enable("final_edit")
+              }
+              else{
+                shinyjs::disable("final_edit")
+              }
+            })
+          }
+          
+          #Info button  
+          if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "query_info")){
+            rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
+            
+            d <- rv$df[rv$dt_row,] 
+            record_modal_dialog(session = session, d, edit = FALSE,
+                                c1=choices_site(),
+                                c2=choices_subsite_0(),
+                                c3=choices_uksi,
+                                c4=choices_survey_0()
+            )
+            
+            shinyjs::disable("modal_created_user")
+            shinyjs::disable("modal_created_date")
+            shinyjs::disable("modal_last_edited_user")
+            shinyjs::disable("modal_last_edited_date")
+            shinyjs::disable("modal_guid")
+            shinyjs::disable("modal_site")
+            shinyjs::disable("modal_subsite")
+            shinyjs::disable("modal_gridref")
+            shinyjs::disable("modal_site_record")
+            shinyjs::disable("modal_taxon_nbn")
+            shinyjs::disable("modal_quantity")
+            shinyjs::disable("modal_status")
+            shinyjs::disable("modal_sex")
+            shinyjs::disable("modal_stage")
+            shinyjs::disable("modal_recorder")
+            shinyjs::disable("modal_determiner")
+            shinyjs::disable("modal_method")
+            shinyjs::disable("modal_survey")
+            shinyjs::disable("modal_record_date")
+            shinyjs::disable("modal_start_year")
+            shinyjs::disable("modal_start_month")
+            shinyjs::disable("modal_record_date_end")
+            shinyjs::disable("modal_end_year")
+            shinyjs::disable("modal_end_month")
+            shinyjs::disable("modal_note")
+            shinyjs::disable("modal_verification")
+            shinyjs::disable("modal_verification_user")
+            shinyjs::disable("modal_verification_date")
+            shinyjs::disable("modal_verification_note")
+            
+            shinyjs::hide("final_edit")
+          }
+          
+          rv$add_or_edit <- 0
+        })
         
-        #Info button  
-        if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "query_info")){
-          rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
-          
-          d <- rv$df[rv$dt_row,] 
-          record_modal_dialog(session = session, d, edit = FALSE,
-                              c1=choices_site(),
-                              c2=choices_subsite_0(),
-                              c3=choices_uksi,
-                              c4=choices_survey_0()
-                              )
-          
-          shinyjs::disable("modal_created_user")
-          shinyjs::disable("modal_created_date")
-          shinyjs::disable("modal_last_edited_user")
-          shinyjs::disable("modal_last_edited_date")
-          shinyjs::disable("modal_guid")
-          shinyjs::disable("modal_site")
-          shinyjs::disable("modal_subsite")
-          shinyjs::disable("modal_gridref")
-          shinyjs::disable("modal_site_record")
-          shinyjs::disable("modal_taxon_nbn")
-          shinyjs::disable("modal_quantity")
-          shinyjs::disable("modal_status")
-          shinyjs::disable("modal_sex")
-          shinyjs::disable("modal_stage")
-          shinyjs::disable("modal_recorder")
-          shinyjs::disable("modal_determiner")
-          shinyjs::disable("modal_method")
-          shinyjs::disable("modal_survey")
-          shinyjs::disable("modal_record_date")
-          shinyjs::disable("modal_start_year")
-          shinyjs::disable("modal_start_month")
-          shinyjs::disable("modal_record_date_end")
-          shinyjs::disable("modal_end_year")
-          shinyjs::disable("modal_end_month")
-          shinyjs::disable("modal_note")
-          shinyjs::disable("modal_verification")
-          shinyjs::disable("modal_verification_user")
-          shinyjs::disable("modal_verification_date")
-          shinyjs::disable("modal_verification_note")
-          
-          shinyjs::hide("final_edit")
-        }
-        
-        rv$add_or_edit <- 0
       })
       
       observeEvent(input$close_modal,{
         removeModal()
       })
+      
+      observeEvent(input$modal_survey_info,{
+        d <- tables$surveys[tables$surveys$id == rv$df[rv$dt_row,c("survey")],2:17]
+        survey_modal_dialog(session, d, edit = FALSE)
+        
+        choices_p <- tables$projects$id
+        names(choices_p) <- tables$projects$project
+        
+        updateSelectizeInput(session, "survey_type0", choices = choices_st, selected = d[2])
+        updateSelectizeInput(session, "project0", choices = choices_p, selected = d[8])
+        updateSelectizeInput(session, "sharing0", choices = choices_sh, selected = d[9])
+        
+        shinyjs::disable("survey_created_user0")
+        shinyjs::disable("created_date0")
+        shinyjs::disable("last_edited_user0")
+        shinyjs::disable("last_edited_date0")
+        
+        shinyjs::disable("survey0")
+        shinyjs::disable("survey_type0")
+        shinyjs::disable("start_date0")
+        shinyjs::disable("end_date0")
+        shinyjs::disable("start_year0")
+        shinyjs::disable("end_year0")
+        shinyjs::disable("source0")
+        shinyjs::disable("project0")
+        shinyjs::disable("sharing0")
+        shinyjs::disable("copyright0")
+        shinyjs::disable("description0")
+        shinyjs::disable("url0")
+        })
+      
       # Submit edits button ----
 
       observeEvent(input$final_edit, {
-        id <- rv$df[rv$dt_row, c("id")]
-        #validate input
-        req(input$modal_site)
-        req(input$modal_taxon_nbn)
-        req(input$modal_survey)
-        req(gfv()$error == 0)
-        
-       future_promise({
-          con0 <- fenDb0(user,password)
-          sql <- sqlInterpolate(con0, "UPDATE records.records SET
-                                site_record = ?site_record,
-                                site = ?site,
-                                subsite = ?subsite,
-                                gridref = ?gridref,
-                                taxon_nbn = ?taxon_nbn,
-                                quantity = ?quantity,
-                                status = ?status,
-                                sex = ?sex,
-                                stage = ?stage,
-                                note = ?note,
-                                record_date = ?record_date,
-                                record_date_end = ?record_date_end,
-                                start_year = ?start_year,
-                                end_year = ?end_year,
-                                start_month = ?start_month,
-                                end_month = ?end_month,
-                                recorder = ?recorder,
-                                determiner = ?determiner,
-                                method = ?method,
-                                survey = ?survey,
-                                verification = ?verification,
-                                verification_note = ?verification_note
-                                WHERE id = ?id
+        input$final_edit
+        isolate({
+          id <- rv$df[rv$dt_row, c("id")]
+          #validate input
+          req(input$modal_site)
+          req(input$modal_taxon_nbn)
+          req(input$modal_survey)
+          req(gfv()$error == 0)
+          
+          showModal(
+            modalDialog(
+              div(style="text-align:left",
+                  tags$h4("Saving edits",class="loading"),
+              )
+              ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE
+            )
+          )
+          x <- input$modal_record_date
+          future_promise({
+            con0 <- fenDb0(user,password)
+            sql <- paste0("UPDATE records.records SET
+                                site_record = ",null_text_val(con0,input$modal_site_record),",
+                                site = ",null_num_val(input$modal_site),",
+                                subsite = ",null_num_val(input$modal_subsite),",
+                                gridref = ",null_text_val(con0,input$modal_gridref),",
+                                taxon_nbn = ",null_text_val(con0,input$modal_taxon_nbn),",
+                                quantity = ",null_text_val(con0,input$modal_quantity),",
+                                status = ",null_text_val(con0,input$modal_status),",
+                                sex = ",null_text_val(con0,input$modal_sex),",
+                                stage = ",null_text_val(con0,input$modal_stage),",
+                                note = ",null_text_val(con0,input$modal_note),",
+                                record_date = ",null_date_val(input$modal_record_date),",
+                                record_date_end = ",null_date_val(input$modal_record_date_end),",
+                                start_year = ",null_num_val(input$modal_start_year),",
+                                end_year = ",null_num_val(input$modal_end_year),",
+                                start_month = ",null_num_val(input$modal_start_month),",
+                                end_month = ",null_num_val(input$modal_end_month),",
+                                recorder = ",null_text_val(con0,input$modal_recorder),",
+                                determiner = ",null_text_val(con0,input$modal_determiner),",
+                                method = ",null_text_val(con0,input$modal_method),",
+                                survey = ",null_num_val(input$modal_survey),",
+                                verification = ",null_num_val(input$modal_verification),",
+                                verification_note = ",null_text_val(con0,input$modal_verification_note),"
+                                WHERE id = ",id," 
                                 RETURNING 
                                 site_record,
                                 site,
@@ -1144,87 +1233,47 @@ queryRecordsServer <- function(id, login, tables) {
                                 verification,
                                 verification_user,
                                 verification_date,
-                                verification_note
-                                "
-                                ,
-                                id = id,
-                                site_record = blank(input$modal_site_record),
-                                site = as.numeric(blank(input$modal_site)),
-                                subsite = as.numeric(blank(input$modal_subsite)),
-                                gridref = blank(input$modal_gridref),
-                                taxon_nbn = blank(input$modal_taxon_nbn),
-                                quantity = blank(input$modal_quantity),
-                                status = blank(input$modal_status),
-                                sex = blank(input$modal_sex),
-                                stage = blank(input$modal_stage),
-                                note = blank(input$modal_note),
-                                record_date = as.Date(blank(input$modal_record_date)),
-                                record_date_end = as.Date(blank(input$modal_record_date_end)),
-                                start_year = as.numeric(blank(input$modal_start_year)),
-                                end_year = as.numeric(blank(input$modal_end_year)),
-                                start_month = as.numeric(blank(input$modal_start_month)),
-                                end_month = as.numeric(blank(input$modal_end_month)),
-                                recorder = blank(input$modal_recorder),
-                                determiner = blank(input$modal_determiner),
-                                method = blank(input$modal_method),
-                                survey = as.numeric(blank(input$modal_survey)),
-                                verification = as.numeric(blank(input$modal_verification)),
-                                verification_note = blank(input$modal_verification_note)
-                                )
-
-          tryCatch({
-            r0 <- postgresqlExecStatement(con0, sql)
-            r1 <- postgresqlFetch(r0)
+                                verification_note,
+                                record_date_start,
+                                record_month,
+                                record_year
+                                ")
+            u <- dbGetQuery(con0,sql)
             dbDisconnect(con0)
-            return(r1)
-          },
-          error=function(err){
-            dbDisconnect(con0)
-            return(err)
-            }
-          )
-          
-          })%...>% (function(result) {
-            showModal(submitModal())
-
-          if(length(result) == 1){
-            output$submitMessage <- renderUI({
-              tagList(
-                h4("An error occured"),
-                p(result)
-              )
-            })
-          }else{
-            r <- c(result[1,],
-                   site[site$id == result$site,c("site")],
-                   ifelse(is.na(result$subsite),NA,subsite[subsite$id == result$subsite,c("subsite")]),
-                   uksi_full[uksi_full$nbn_taxon_version_key == result$taxon_nbn,c("taxon_name")],
-                   uksi_full[uksi_full$nbn_taxon_version_key == result$taxon_nbn,c("taxon_authority")],
-                   uksi_full[uksi_full$nbn_taxon_version_key == result$taxon_nbn,c("taxon_qualifier")],
-                   survey[survey$id == result$survey,c("survey")],
-                   ifelse(is.na(result$verification),NA,verification[verification$code == result$verification,c("description")])
-            )
-            rv$df[rv$dt_row,c(2:37)] <- r
+            return(u)
             
-            output$submitMessage <- renderUI({
-              tagList(
-                h4("Record updated successfully")
-              )
-            })
-          }
+          })%...>% (function(result) {
+            
+            if(!isTruthy(result)){
+              showModal(
+                modalDialog(
+                  div(style="text-align:left",
+                      tags$h4("An error occured",class="loading"),
+                      )
+                  ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+                  )
+                )
+            }else{
+              r <- c(result[1,],
+                     tables$sites[tables$sites$id == result$site,c("site")],
+                     ifelse(is.na(result$subsite),NA,tables$subsites[tables$subsites$id == result$subsite,c("subsite")]),
+                     uksi_full[uksi_full$nbn_taxon_version_key == result$taxon_nbn,c("taxon_name","taxon_authority","taxon_qualifier")],
+                     tables$surveys[tables$surveys$id == result$survey,c("survey","start_date","end_date","start_year","end_year")],
+                     ifelse(is.na(result$verification),NA,verification[verification$code == result$verification,c("description")])
+                     )
+              rv$df[rv$dt_row,c(2:which(colnames(rv$df) == "verification_description"))] <- r 
+              showModal(
+                modalDialog(
+                  div(style="text-align:left",
+                      tags$h4("Record updated successfully",class="loading"),
+                      )
+                  ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+                  )
+                )
+            }
+          })
         })
       })
-      
-      # Modal for submit message
-      submitModal <- function(){
-        ns <- session$ns
-        modalDialog(
-          div(style="text-align:left",
-              uiOutput(ns("submitMessage")),
-          )
-          ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
-        )
-      }
       
       # Map definition ----
       output$resultsMap <- renderLeaflet({
@@ -1239,7 +1288,7 @@ queryRecordsServer <- function(id, login, tables) {
           addMeasure() %>%
           addFullscreenControl() %>%
           addScaleBar(position = c("bottomleft")) %>%
-          addLayersControl(baseGroups = c("OpenStreetMap.Mapnik","Satellite","OpenStreetMap.HOT","Stamen.TerrainBackground"),
+          addLayersControl(baseGroups = c("OpenStreetMap.Mapnik","Satellite","OpenStreetMap.HOT"),
                            options = layersControlOptions(collapsed = TRUE)) %>%
           fitBounds(-5.515982,50.024189,1.35876,55.948577) %>%
           addMapPane("10km", zIndex = 410) %>%
@@ -1267,11 +1316,33 @@ queryRecordsServer <- function(id, login, tables) {
       # Update results DT and map with results ----
       
       observe({
-        x <- rv$df[,c("taxon_name","site_name","subsite_name","gridref","record_date","survey_name","Buttons")]
-        
-        DT::replaceData(proxy_DT, x, resetPaging = FALSE, rownames = FALSE)
-        
-        req(isTruthy(rv$sf))
+        req(rv$df)
+        x <- rv$df
+        x$date_range <- apply(x[c("record_date",
+                                   "record_date_start",
+                                   "record_date_end",
+                                   "start_month",
+                                   "end_month",
+                                   "start_year",
+                                   "end_year",
+                                   "survey_start_date",
+                                   "survey_end_date",
+                                   "survey_start_year",
+                                   "survey_end_year",
+                                   "record_month",
+                                    "record_year")],1,function(x){
+                                     x[which(x == "NA")] <- NA
+                                     paste_na.rm(date_range(x),s="")
+                                     })
+        x <- x[,c("taxon_name","site_name","subsite_name","gridref","date_range","survey_name","Buttons","verification")]
+        proxy_DT %>% 
+          DT::replaceData(data = x, resetPaging = FALSE, rownames = FALSE) %>%
+          updateFilters(data = x)
+      })
+      
+      observe({
+        req(rv$sf)
+        req(rv$df)
         site_q <- sites1()[sites1()$id %in% rv$df[!is.na(rv$df$gridref),c("site")],]
         r <- rv$sf
         bbox <- st_bbox(r)
@@ -1344,7 +1415,6 @@ queryRecordsServer <- function(id, login, tables) {
                         highlightOptions = highlightOptions(color = "white", weight = 2,
                                                             bringToFront = TRUE)
             ) 
-
       })
       
       # Update map results DT ----
@@ -1359,13 +1429,16 @@ queryRecordsServer <- function(id, login, tables) {
           g <- input$resultsMap_shape_click$id
           rv2$df <- rv$df[rv$df$gridref == g & !is.na(rv$df$gridref),]
           x <- rv2$df[,c("taxon_name","site_name","subsite_name","record_date","Buttons")]
-          DT::replaceData(proxy_DT2, x, resetPaging = FALSE, rownames = FALSE)
-       
+          proxy_DT2 %>%
+            DT::replaceData(data = x, resetPaging = FALSE, rownames = FALSE)%>%
+            updateFilters(data = x)
       })
       
         ## Drag select
       observeEvent(input$resultsMap_draw_new_feature, {
         req(isTruthy(rv$sf) && isTruthy(input$resultsMap_draw_new_feature) && map_mode() == "draw")
+        
+        showSpinner("mapTable")
         
         polygon_coordinates <- input$resultsMap_draw_new_feature$geometry$coordinates[[1]]
         l <- do.call(rbind,lapply(polygon_coordinates,function(x){c(x[[1]][1],x[[2]][1])}))
@@ -1391,70 +1464,119 @@ queryRecordsServer <- function(id, login, tables) {
             singleFeature = TRUE
           )
         
-        
+        hideSpinner("mapTable")
         })
 
       # Run query ----
-      observeEvent(input$runQuery,{
-        req(gf_check() == TRUE)
-        req(!isTruthy(input$date) || date_check_r() == TRUE)
-        req(!isTruthy(input$start_date) || date_check_0() == TRUE)
-        req(!isTruthy(input$end_date) || date_check_1() == TRUE)
-        req(!isTruthy(input$created_date) || date_check_c$d == TRUE)
-        req(!isTruthy(input$created_date_start) || date_check_c$s == TRUE)
-        req(!isTruthy(input$created_date_end) || date_check_c$e == TRUE)
-        req(!isTruthy(input$edited_date) || date_check_e$d == TRUE)
-        req(!isTruthy(input$edited_date_start) || date_check_e$s == TRUE)
-        req(!isTruthy(input$edited_date_end) || date_check_e$e == TRUE)
-        req(!isTruthy(input$guid) || (!is.na(as.UUID(input$guid)) && isTruthy(input$guid)))
-        
-        if(input$fenspp > 0){
-          if(input$fenspp == 1){
-            w_fenspp <- paste0("u.nbn_taxon_version_key_for_recommended_name IN ", string_fspp)
+      observeEvent(input$runQuery,ignoreInit =TRUE,{
+          req((prod(unlist(lapply(strsplit(input$gridref,","),isGridref))) == TRUE || !isTruthy(input$gridref)) == TRUE)
+          req(!isTruthy(input$date) || date_check_r() == TRUE)
+          req(!isTruthy(input$start_date) || date_check_0() == TRUE)
+          req(!isTruthy(input$end_date) || date_check_1() == TRUE)
+          req(!isTruthy(input$created_date) || date_check_c$d == TRUE)
+          req(!isTruthy(input$created_date_start) || date_check_c$s == TRUE)
+          req(!isTruthy(input$created_date_end) || date_check_c$e == TRUE)
+          req(!isTruthy(input$edited_date) || date_check_e$d == TRUE)
+          req(!isTruthy(input$edited_date_start) || date_check_e$s == TRUE)
+          req(!isTruthy(input$edited_date_end) || date_check_e$e == TRUE)
+          req(!isTruthy(input$guid) || (!is.na(as.UUID(input$guid)) && isTruthy(input$guid)))
+          req(!isTruthy(input$project) || input$project > 0)
+           
+          if(!(isTruthy(input$county) || isTruthy(input$site) || isTruthy(input$subsite) || isTruthy(input$gridref) || isTruthy(input$site_record) ||
+               isTruthy(input$taxon_group) || isTruthy(input$fenspp) || isTruthy(input$taxon) ||
+               isTruthy(input$date) || isTruthy(input$start_date) || isTruthy(input$end_date) ||
+               isTruthy(input$survey) || isTruthy(input$project) || isTruthy(input$survey_type) || isTruthy(input$sharing) || isTruthy(input$recorder) ||
+               isTruthy(input$created_date) || isTruthy(input$created_date_start) || isTruthy(input$created_date_end) ||
+               isTruthy(input$edited_date) || isTruthy(input$edited_date_start) || isTruthy(input$edited_date_end) ||
+               isTruthy(input$guid)
+          )){
+            showModal(
+              modalDialog(
+                div(style="text-align:center",
+                    tags$h4("Record search fields empty!"),
+                )
+                ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+              )
+            )
           }
-          if(input$fenspp == 2){
-            w_fenspp <- paste0("u.nbn_taxon_version_key_for_recommended_name IN ", string_afspp)
+          
+          # At least one form field
+          req(isTruthy(input$county) || isTruthy(input$site) || isTruthy(input$subsite) || isTruthy(input$gridref) || isTruthy(input$site_record) ||
+              isTruthy(input$taxon_group) || isTruthy(input$fenspp) || isTruthy(input$taxon) ||
+                isTruthy(input$date) || isTruthy(input$start_date) || isTruthy(input$end_date) ||
+                isTruthy(input$survey) || isTruthy(input$project) || isTruthy(input$survey_type) || isTruthy(input$sharing) || isTruthy(input$recorder) ||
+                isTruthy(input$created_date) || isTruthy(input$created_date_start) || isTruthy(input$created_date_end) ||
+                isTruthy(input$edited_date) || isTruthy(input$edited_date_start) || isTruthy(input$edited_date_end) ||
+                isTruthy(input$guid)
+                )
+          
+          # WHERE clause for fen spp
+          if(input$fenspp > 0){
+            if(input$fenspp == 1){
+              w_fenspp <- paste0("u.nbn_taxon_version_key_for_recommended_name IN ", string_fspp)
+            }
+            if(input$fenspp == 2){
+              w_fenspp <- paste0("u.nbn_taxon_version_key_for_recommended_name IN ", string_afspp)
+            }
+          }else{
+            w_fenspp <- "(1=1)"
           }
-        }else{
-          w_fenspp <- "(1=1)"
-        }
-        
-        # define sql where string
-        w <- paste(
-          # Site fields
-          sql_in("f.county",input$county),
-          sql_in("r.site",as.numeric(input$site)),
-          sql_in("r.subsite",as.numeric(input$subsite)),
-          gf_vec("r.gridref",unlist(strsplit(input$gridref,";"))),
-          like_vec("r.site_record",unlist(strsplit(input$site_record,";"))),
           
-          # taxon fields
-          sql_in("u.informal_group",input$taxon_group),
-          w_fenspp,
-          sql_in("u.nbn_taxon_version_key_for_recommended_name",uksi_full[unique(which(uksi_full$nbn_taxon_version_key %in% input$taxon)),c("nbn_taxon_version_key_for_recommended_name")]),
+          # WHERE clause for taxa, including descendents
           
-          # data source fields
-          sql_in("r.survey",as.numeric(input$survey)),
-          sql_in("s.project",as.numeric(input$project)),
-          sql_in("s.survey_type",as.numeric(input$survey_type)),
-          sql_in("s.sharing",as.numeric(input$sharing)),
-          like_vec("r.recorder",unlist(strsplit(input$recorder,";"))),
+          #w_taxa <- sql_in("u.nbn_taxon_version_key_for_recommended_name",tvk_list) # WITHOUT DESCENDENTS
           
-          # date fields
-          sql_date("r.record_date",input$date,input$date), #WHAT ABOUT RECORDS WHERE DATE IS IN END_DATE OR SURVEYS?
-          sql_date("r.record_date",input$start_date,input$end_date), #WHAT ABOUT DATE RANGES AND RECORDS WHERE DATE COMES FROM SURVEY?
+          if(isTruthy(input$taxon)){
+            tvk_list <- uksi_full[unique(which(uksi_full$nbn_taxon_version_key %in% input$taxon)),c("nbn_taxon_version_key_for_recommended_name")]
+            desc <- paste0("SELECT D.taxon_version_key FROM (WITH RECURSIVE rec (organism_key) as
+                    (
+                      SELECT t1.organism_key, t1.taxon_version_key from lookups.uksi_tree t1 where taxon_version_key IN ",con_sql_string(tvk_list),"
+                      UNION ALL
+                      SELECT t2.organism_key, t2.taxon_version_key from rec, lookups.uksi_tree t2 where t2.parent_key = rec.organism_key
+                      )
+                    SELECT *
+                    FROM rec) D") # GET DESCENDENTS
+            w_taxa <- paste0("u.nbn_taxon_version_key_for_recommended_name IN (",desc,")")
+          }else{
+            w_taxa <- "(1=1)"
+          }
           
-          # admin fields
-          sql_in("r.guid",input$guid),
-          sql_date("r.created_date",input$created_date,input$created_date),
-          sql_date("r.created_date",input$created_date_start,input$created_date_end),
-          sql_date("r.last_edited_date",input$edited_date,input$edited_date),
-          sql_date("r.last_edited_date",input$edited_date_start,input$edited_date_end)
-          , sep = " AND "
-        )
-        #define sql string
-        sql <- paste0(
-          "SELECT 
+          # define sql where string
+          w <- paste(
+            # Site fields
+            sql_in("f.county",input$county),
+            sql_in("r.site",as.numeric(input$site)),
+            sql_in("r.subsite",as.numeric(input$subsite)),
+            gf_vec("r.gridref",unlist(strsplit(input$gridref,";"))),
+            like_vec("r.site_record",unlist(strsplit(input$site_record,";"))),
+            
+            # taxon fields
+            sql_in("u.informal_group",input$taxon_group),
+            w_fenspp,
+            w_taxa,
+            
+            # data source fields
+            sql_in("r.survey",as.numeric(input$survey)),
+            sql_in("s.project",as.numeric(input$project)),
+            sql_in("s.survey_type",as.numeric(input$survey_type)),
+            sql_in("s.sharing",as.numeric(input$sharing)),
+            like_vec("r.recorder",unlist(strsplit(input$recorder,";"))),
+            
+            # date fields
+            sql_date("r.record_date",input$date,input$date), #WHAT ABOUT RECORDS WHERE DATE IS IN END_DATE OR SURVEYS?
+            sql_date("r.record_date",input$start_date,input$end_date), #WHAT ABOUT DATE RANGES AND RECORDS WHERE DATE COMES FROM SURVEY?
+            
+            # admin fields
+            sql_in("r.guid",input$guid),
+            sql_date("r.created_date",input$created_date,input$created_date),
+            sql_date("r.created_date",input$created_date_start,input$created_date_end),
+            sql_date("r.last_edited_date",input$edited_date,input$edited_date),
+            sql_date("r.last_edited_date",input$edited_date_start,input$edited_date_end)
+            , sep = " AND "
+          )
+          #define sql string
+          sql <- paste0(
+            "SELECT 
           r.id,
           r.site_record,
           r.site,
@@ -1485,6 +1607,9 @@ queryRecordsServer <- function(id, login, tables) {
           r.verification_user,
           r.verification_date,
           r.verification_note,
+          r.record_date_start,
+          r.record_month,
+          r.record_year,
           f.site AS site_name,
           fs.subsite AS subsite_name,
           u.taxon_name,
@@ -1496,7 +1621,6 @@ queryRecordsServer <- function(id, login, tables) {
           s.start_year AS survey_start_year,
           s.end_year AS survey_end_year,
           v.description AS verification_description,
-          r.record_date_start,
           ST_TRANSFORM(gridref_square(r.gridref),4326) AS geom
           FROM 
           records.records r LEFT OUTER JOIN records.surveys s ON r.survey = s.id
@@ -1506,51 +1630,52 @@ queryRecordsServer <- function(id, login, tables) {
           LEFT OUTER JOIN lookups.lookup_verification v ON r.verification = v.code 
           WHERE 
           "
-          ,w
-        )
-        
-        showModal(
-          modalDialog(
-            div(style="text-align:left",
-                tags$h4("Search in progress",class="loading"),
-            )
-            ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+            ,w, " LIMIT 20000"
           )
-        )
-        
-        future_promise({
-          con0 <- fenDb0(user,password)
-          result <- st_read(dsn = con0, 
-                            query = sql, 
-                            geometry_column = "geom")
-          dbDisconnect(con0)
-          return(result)
-        })%...>% (function(result) {
-          proxy_map %>% clearGroup("sites")
-          proxy_map %>% clearGroup("records")
           
-          rv$df <- add_btns(st_drop_geometry(result),role,"query")
-          rv$sf <- result[which(!st_is_empty(result)),]
+          showModal(
+            modalDialog(
+              div(style="text-align:left",
+                  tags$h4("Search in progress",class="loading"),
+              )
+              ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+            )
+          )
           
-          # Results modal
-          n <- nrow(result)
-          if(n > 0){
-            t <- paste0("Search returned <b>",format(n,big.mark=","),"</b> records. <br>
+          future_promise({
+            con0 <- poolCheckout(con_global)
+            result <- st_read(dsn = con0, 
+                              query = sql, 
+                              geometry_column = "geom")
+            poolReturn(con0)
+            return(result)
+          })%...>% (function(result) {
+              proxy_map %>% clearGroup("sites")
+              proxy_map %>% clearGroup("records")
+              
+              rv$sf <- result[which(!st_is_empty(result)),]
+              rv$df <- add_btns(st_drop_geometry(result),role,"query")
+              
+              # Results modal
+              n <- nrow(result)
+              if(n > 0){
+                t <- paste0("Search returned <b>",format(n,big.mark=","),"</b> records. <br>
             Go to 'Results' tab for table of results, or 'Map' to interrogate them on a map.")
-
-            # Activate download
-            #shinyjs::show("dlQuery")
-            shinyjs::removeClass(id = "dlDiv",class="buttonHidden")
-            
-          }
-          else{
-            t <- "<b>No records were found.</b>"
-            #shinyjs::hide("dlQuery")
-            shinyjs::addClass(id = "dlDiv",class="buttonHidden")
-            
-          }
-          showModal(results_modal(t))
-        })
+                
+                # Activate download
+                #shinyjs::show("dlQuery")
+                shinyjs::removeClass(id = "dlDiv",class="buttonHidden")
+                
+              }
+              else{
+                t <- "<b>No records were found.</b>"
+                #shinyjs::hide("dlQuery")
+                shinyjs::addClass(id = "dlDiv",class="buttonHidden")
+                
+              }
+              showModal(results_modal(t))
+          })
+        
       })
       
       # Results modal
@@ -1586,6 +1711,7 @@ queryRecordsServer <- function(id, login, tables) {
       )
     
       outputOptions(output, 'resultsMap', suspendWhenHidden = FALSE)
+      outputOptions(output, 'mapTable', suspendWhenHidden = FALSE)
       outputOptions(output, 'resultsTable', suspendWhenHidden = FALSE)
       # Info button ----
       
@@ -1598,8 +1724,8 @@ queryRecordsServer <- function(id, login, tables) {
         modalDialog(
           div(h4("Instructions"),
               tags$ul(
-                tags$li("Use the form to define a search query and press the 'Search' button to return a set of records."),
-                tags$li("Vague queries may take a while to return the results. If you leave the form blank then it will return all records in the database."),
+                tags$li("Use the form to define a search query and press the 'Search' button to return a set of records. The number of records returned is capped at 20,000."),
+                tags$li("Vague queries may take a while to return the results. You must fill in at least one seach field."),
                 tags$li("Results can be downloaded as a comma-separated value (.csv) file by clicking the 'Download results' button that appears once the results have been returned."),
                 tags$li("Except for dates, all fields accept several search criteria. If several criteria are entered into one field, then records matching at least one are returned."),
                 tags$li("The 'Results' tab shows the search results in table form."),
