@@ -1,10 +1,13 @@
 loggersManageUI <- function(id){
   ns <- NS(id)
   tagList(
+    withSpinner(
+      tagList(
     column(12,
            column(5,
-                  h3("Loggers"),
+                  h4("Loggers"),br(),
                   div(
+                    p("Logger units owned by Freshwater Habitats Trust for use in monitoring fens."),
                     div(id = ns("add_logger_container"),
                         style = "margin-top: 10px;",
                         actionButton(
@@ -15,13 +18,14 @@ loggersManageUI <- function(id){
                     )
                   ),
                   div(
-                    style = "margin-top: 10px;",
-                    withSpinner(DT::dataTableOutput(outputId = ns("loggersTable")), type = 7)
+                    style = "margin-top: 10px;font-size:12px;padding: 10px",
+                    withSpinner(DT::DTOutput(outputId = ns("loggersTable")), type = 7)
                   )
            ),
            column(7,
-                  h3("Logger installation record"),
+                  h4("Logger installation record"),br(),
                   div(
+                    uiOutput(ns("logInstallText")),
                     div(
                       style = "margin-top: 10px;",
                       disabled(actionButton(
@@ -37,15 +41,16 @@ loggersManageUI <- function(id){
                     )
                   ),
                   div(
-                    style = "margin-top: 10px;",
+                    style = "margin-top: 10px;font-size:12px;padding: 10px",
                     withSpinner(DT::DTOutput(outputId = ns("logger_installsTable")), type = 7)
                   )                
            )
            ),
     column(12,
            column(5,
-                  h3("Logger configuration record"),
+                  h4("Logger configuration record"),br(),
                   div(
+                    uiOutput(ns("logConfigText")),
                     div(id = ns("add_logger_config_container"),
                         style = "margin-top: 10px;",
                         disabled(actionButton(
@@ -56,12 +61,25 @@ loggersManageUI <- function(id){
                     )
                   ),
                   div(
-                    style = "margin-top: 10px;",
+                    style = "margin-top: 10px;font-size:12px;padding: 10px",
                     withSpinner(DT::DTOutput(outputId = ns("logger_configsTable")), type = 7)
                   ) 
            )
-    ),
-    tags$script(src ="script.js")
+    
+           ),
+      ),
+      id = ns("module"),
+      type = 4,
+      size = 2,
+      proxy.height = "100%",
+      hide.ui = TRUE,
+      caption = "Loading module"),
+    tags$script(src ="script.js"),
+    tags$script(
+      HTML(
+        paste0("$('#",id,"-module').parent().removeClass('shiny-spinner-hidden')")
+      )
+    )
   )
 }
 
@@ -74,8 +92,22 @@ loggersManageServer <- function(id, login, tables) {
       user <- login$username
       password <- login$password
       
-      req(tables$hydro_installs)
-      inst <- tables$hydro_installs
+      # Module initialisation ----
+      isolate({
+        app_tables(tables, c("hydro_installs"))
+      })
+      
+      observe({
+        req(tables$hydro_installs0)
+        req(tables$hydro_installs)
+        
+        runjs(
+          paste0(
+            "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
+                 $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
+          )
+        )
+      })
       
       #Load modals ----
       source("./R/modals/logger_modal.R")
@@ -118,15 +150,19 @@ loggersManageServer <- function(id, login, tables) {
         rownames = FALSE,
         selection = 'single',
         colnames = c("Serial","Model",""),
-        options = list(bLengthChange=0, processing = FALSE,
-                       columnDefs = list(
-                         list(orderable = FALSE, targets = c(2)),
-                         list(width = '60px',targets=c(2))
-                       ),
-                       extensions = c("FixedHeader"),#, "Scroller")
-                       fixedHeader = TRUE,
-                       scrollY = "30vh"
-        )
+        filter = list(position='top'),
+        options = list(
+            dom = 'tlpi',
+            processing = TRUE,
+           columnDefs = list(
+             list(targets = c(2),searchable = FALSE),
+             list(orderable = FALSE, targets = c(2)),
+             list(width = '60px',targets=c(2))
+             ),
+           extensions = c("FixedHeader"),#, "Scroller")
+           fixedHeader = TRUE,
+           scrollY = "30vh"
+           )
         
       )
       
@@ -149,17 +185,21 @@ loggersManageServer <- function(id, login, tables) {
         escape = F,
         rownames = FALSE,
         selection = 'single',
+        filter = list(position='top'),
         colnames = c("Logger serial","Installation","Date installed", "Installed by","Date removed", "Removed by",""),
-        options = list(bLengthChange=0, processing = FALSE,
-                       columnDefs = list(
-                         list(orderable = FALSE, targets = c(6)),
-                         list(width = '60px',targets=c(6))
-                       ),
-                       language = list(zeroRecords = "No logger installations"),
-                       extensions = c("FixedHeader"),#, "Scroller")
-                       fixedHeader = TRUE,
-                       scrollY = "30vh"
-                       )
+        options = list(
+          dom = 'tlpi',
+          processing = TRUE,
+          columnDefs = list(
+            list(targets = c(6),searchable = FALSE),
+             list(orderable = FALSE, targets = c(6)),
+             list(width = '60px',targets=c(6))
+             ),
+          language = list(zeroRecords = "No logger installations"),
+          extensions = c("FixedHeader"),#, "Scroller")
+          fixedHeader = TRUE,
+          scrollY = "30vh"
+          )
       )
 
       proxy1 <- DT::dataTableProxy("logger_installsTable")
@@ -181,16 +221,20 @@ loggersManageServer <- function(id, login, tables) {
         escape = F,
         rownames = FALSE,
         selection = 'single',
+        filter = list(position='top'),
         colnames = c("Name","Created date",""),
-        options = list(bLengthChange=0, processing = FALSE,
-                       columnDefs = list(
-                         list(orderable = FALSE, targets = c(2)),
-                         list(width = '60px',targets=c(2))
-                       ),
-                       language = list(zeroRecords = "No logger configurations"),
-                       extensions = c("FixedHeader"),#, "Scroller")
-                       fixedHeader = TRUE,
-                       scrollY = "30vh"
+        options = list(
+          dom = 'tlpi',
+          processing = TRUE,
+          columnDefs = list(
+            list(targets = c(2),searchable = FALSE),
+            list(orderable = FALSE, targets = c(2)),
+            list(width = '60px',targets=c(2))
+            ),
+          language = list(zeroRecords = "No logger configurations"),
+          extensions = c("FixedHeader"),#, "Scroller")
+          fixedHeader = TRUE,
+          scrollY = "30vh"
                        )
       )
 
@@ -228,20 +272,15 @@ loggersManageServer <- function(id, login, tables) {
         log_conf <- add_btns(log_conf, role, "log_conf")
         log_conf_0 <- log_conf[0,]
 
-        installs_choices <- inst$installid
-        names(installs_choices) <- paste0(inst$sitename, " - ", inst$installname)
-        
         return(list(
           "log_inst" = log_inst,
           "log_conf" = log_conf,
           "log" = log,
           "log_inst_0" = log_inst_0,
-          "log_conf_0" = log_conf_0,
-          "install_choices" = installs_choices
+          "log_conf_0" = log_conf_0
         ))
       })%...>% (function(result) {
         
-        rv$installs <- inst
         rv$logger_installs <- result$log_inst
         rv$logger_configs <- result$log_conf
         rv$df <- result$log
@@ -250,10 +289,18 @@ loggersManageServer <- function(id, login, tables) {
 
         rv_0$log_inst_0 <- result$log_inst_0
         rv_0$log_conf_0 <- result$log_conf_0
-        rv_0$installs_choices <- result$install_choices
-        
       })
 
+      observe({
+        req(tables$hydro_installs)
+        
+        rv$installs <- tables$hydro_installs
+        
+        c <- tables$hydro_installs$id
+        names(c) <- paste0(tables$hydro_installs$site_name, " - ", tables$hydro_installs$install_name)
+        rv_0$installs_choices <- c
+      })
+      
     #Logger controls ----
       ##Logger submit ----
       observeEvent(input$final_edit_l, {
@@ -263,7 +310,7 @@ loggersManageServer <- function(id, login, tables) {
           log_id <- rv$df[rv$dt_row, c("id")]
 
           future_promise({
-            con0 <- fendb0(user,password)
+            con0 <- fenDb0(user,password)
             q <- paste0("UPDATE hydro_monitoring.loggers SET
                               firmware = ", null_text_val(con0,input$firmware) ,",
                               hardware = ", null_text_val(con0,input$hardware) ,",
@@ -375,14 +422,14 @@ loggersManageServer <- function(id, login, tables) {
         mode("add")
 
         # Limit choice of installs to those that don't have active logger installs
-        inst_0 <- rv$installs[!(rv$installs$installid %in% rv$logger_installs$install) | !(rv$installs$installid %in% rv$logger_installs[is.na(rv$logger_installs$remove_date),c("install")]),]
-        inst_0_choices <- inst_0$installid
-        names(inst_0_choices) <- paste0(inst_0$sitename," - ",inst_0$installname)
+        inst_0 <- rv$installs[!(rv$installs$id %in% rv$logger_installs$install) | !(rv$installs$id %in% rv$logger_installs[is.na(rv$logger_installs$remove_date),c("install")]),]
+        inst_0_choices <- inst_0$id
+        names(inst_0_choices) <- paste0(inst_0$site_name," - ",inst_0$install_name)
         updateSelectizeInput(session, "install", choices = inst_0_choices)
 
-        inst_0 <- inst[!(inst$installid %in% log_inst$install) | !(inst$installid %in% log_inst[is.na(log_inst$remove_date),c("install")]),]
-        inst_0_choices <- inst_0$installid
-        names(inst_0_choices) <- paste0(inst_0$sitename," - ",inst_0$installname)
+        inst_0 <- tables$hydro_installs[!(tables$hydro_installs$id %in% rv$logger_installs$install) | !(tables$hydro_installs$id %in% rv$logger_installs[is.na(rv$logger_installs$remove_date),c("install")]),]
+        inst_0_choices <- inst_0$id
+        names(inst_0_choices) <- paste0(inst_0$site_name," - ",inst_0$install_name)
 
         shinyjs::hide("remove_date")
         shinyjs::hide("remove_by")
@@ -480,9 +527,9 @@ loggersManageServer <- function(id, login, tables) {
           req(input$install_by)
 
           serial <- rv$df[input$loggersTable_rows_selected,c("serial")]
-          install <- paste0(rv$installs[rv$installs$installid == input$install,c("sitename")],
+          install <- paste0(rv$installs[rv$installs$id == input$install,c("site_name")],
                  " - ",
-                 rv$installs[rv$installs$installid == input$install,c("installname")])
+                 rv$installs[rv$installs$id == input$install,c("install_name")])
 
           future_promise({
             con0 <- fenDb0(user,password)
@@ -723,6 +770,13 @@ loggersManageServer <- function(id, login, tables) {
 
       observe({
         if(isTruthy(input$loggersTable_rows_selected)){
+          output$logInstallText <- renderUI({
+            p(paste0("Logger installation records for logger ",rv$df[input$loggersTable_rows_selected,c("serial")],"."))
+          })
+          output$logConfigText <- renderUI({
+            p(paste0("Logger configuration records for logger ",rv$df[input$loggersTable_rows_selected,c("serial")],"."))
+          })
+          
           rv$df_li <- rv$logger_installs[rv$logger_installs$logger == rv$df[input$loggersTable_rows_selected,c("serial")],]
           rv$df_lc <- rv$logger_configs[rv$logger_configs$logger == rv$df[input$loggersTable_rows_selected,c("serial")],]
 
@@ -738,8 +792,15 @@ loggersManageServer <- function(id, login, tables) {
           }
         }
         else{
-          rv$df_li <- rv_0$log_inst_0
-          rv$df_lc <- rv_0$log_conf_0
+          # When a logger not selected, just shows all installs and configs
+          output$logInstallText <- renderUI({
+            p("Logger installation records for all loggers.")
+          })
+          output$logConfigText <- renderUI({
+            p("Logger configuration records for all loggers.")
+          })
+          rv$df_li <- rv$logger_installs #rv_0$log_inst_0 
+          rv$df_lc <- rv$logger_configs #rv_0$log_conf_0
 
           shinyjs::disable("add_logger_install")
           shinyjs::disable("remove_logger_install")

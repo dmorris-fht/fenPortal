@@ -1177,7 +1177,7 @@ enterRecordsServer <- function(id, login, tables) {
         future_promise({
           showModal(
             modalDialog(
-              div(style="text-align:left",
+              div(style="text-align:left;width:60%",
                   tags$h4("Uploading",class="loading"),
               )
               ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE

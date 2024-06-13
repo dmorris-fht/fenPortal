@@ -161,6 +161,9 @@ vegListsServer <- function(id, tables) {
       
       # Run query ----
       observeEvent(input$run,{
+        s <- input$site
+        p <- input$plots
+        
         future_promise({
           con0 <- poolCheckout(con_global)
           q1 <- paste0("SELECT d.plot_reference_visit, u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS att,
@@ -174,7 +177,7 @@ vegListsServer <- function(id, tables) {
                         p.plot_reference = v.plot_reference AND
                         v.plot_reference_visit = d.plot_reference_visit AND
                         u.nbn_taxon_version_key = d.taxon_nbn AND
-                        p.site = ",input$site, " ORDER BY d.plot_reference_visit, att"
+                        p.site = ",s, " ORDER BY d.plot_reference_visit, att"
                        )
           q2 <- paste0("SELECT d.plot_reference_visit, u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS att,
                       d.abundance_domin AS value
@@ -187,7 +190,7 @@ vegListsServer <- function(id, tables) {
                         p.plot_reference = v.plot_reference AND
                         v.plot_reference_visit = d.plot_reference_visit AND
                         u.nbn_taxon_version_key = d.taxon_nbn AND ",
-                        sql_in("p.plot_reference",input$plots), " 
+                        sql_in("p.plot_reference",p), " 
                        ORDER BY d.plot_reference_visit, att"
                        )
           q3 <- paste0("SELECT v.plot_reference_visit, v.record_date, v.height, v.bare_ground, v.bryophyte_cover, v.pool, v.tufa, v.canopy, v.partial_shade, v.litter_cover, v.nvc, v.note, v.recorder
@@ -196,14 +199,14 @@ vegListsServer <- function(id, tables) {
                             records.plot_visits v
                           WHERE
                             p.plot_reference = v.plot_reference AND
-                            p.site = ", input$site, "ORDER BY v.plot_reference_visit")
+                            p.site = ", s, "ORDER BY v.plot_reference_visit")
           q4 <- paste0("SELECT v.plot_reference_visit, v.record_date, v.height, v.bare_ground, v.bryophyte_cover, v.pool, v.tufa, v.canopy, v.partial_shade, v.litter_cover, v.nvc, v.note, v.recorder
                           FROM 
                             spatial.monitoring_vegetation p,
                             records.plot_visits v
                           WHERE
                             p.plot_reference = v.plot_reference AND ",
-                            sql_in("p.plot_reference",input$plots)," ORDER BY v.plot_reference_visit")
+                            sql_in("p.plot_reference",p)," ORDER BY v.plot_reference_visit")
           
           if(!isTruthy(input$plots)){
             Q1 <- q1
@@ -232,7 +235,7 @@ vegListsServer <- function(id, tables) {
             
             p <- spread(d2, key = "plot_reference_visit", value = "value")
             
-            name <- paste0(site[site$id == as.numeric(input$site), c("site")], " veg ",format(Sys.time(),format="%Y%m%d%H%M%S"))
+            name <- paste0(tables$sites[tables$sites$id == as.numeric(input$site), c("site")], " veg ",format(Sys.time(),format="%Y%m%d%H%M%S"))
             
             output$dlExport <- downloadHandler(
               filename = function() {

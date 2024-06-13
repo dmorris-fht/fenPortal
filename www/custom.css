@@ -155,7 +155,6 @@ h2, h3,h4 {
   content: "\2026";
   /* ascii code for the ellipsis character */
   width: 0px;
-  margin-left: 50%;
 }
 
 /* Hidden button */
@@ -275,6 +274,21 @@ div[data-spinner-id~="vegLists-module"] {
 }
 
 .load-container:has(> #vegLists-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
+/* Sp Intros module */
+
+div[data-spinner-id~="spIntro-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #spIntro-module) {
   background:rgba(250,250,250,0.4);
   height:100%;
   width:100%;

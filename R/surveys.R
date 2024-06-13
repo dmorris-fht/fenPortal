@@ -1,6 +1,8 @@
 surveyUI <- function(id){
   ns <- NS(id)
   tagList(
+    withSpinner(
+      tagList(
     column(12,
            column(4,
                   h3("Data sources"),
@@ -23,11 +25,6 @@ surveyUI <- function(id){
                   
                   ),
            column(8,
-                  
-                  div(
-                    style = "border: 1px solid black; border-radius: 5px; padding: 10px ",
-                             withSpinner(DT::DTOutput(outputId = ns("surveysTable")),type = 7)
-                  ),
                   div(
                     div(id = ns("add_survey_container"),
                         style = "margin-top: 10px;",
@@ -37,10 +34,26 @@ surveyUI <- function(id){
                           icon = icon("plus")
                         )
                     )
+                  ),
+                  div(
+                    style = "padding: 10px;font-size:12px ",
+                             withSpinner(DT::DTOutput(outputId = ns("surveysTable")),type = 7)
                   )
            )
   ),
-  tags$script(src ="script.js")
+      ),
+  id = ns("module"),
+  type = 4,
+  size = 2,
+  proxy.height = "100%",
+  hide.ui = TRUE,
+  caption = "Loading module"),
+  tags$script(src ="script.js"),
+  tags$script(
+    HTML(
+      paste0("$('#",id,"-module').parent().removeClass('shiny-spinner-hidden')")
+    )
+  )
   )
 }
 
@@ -54,6 +67,22 @@ surveyServer <- function(id, login, tables) {
       user <- login$username
       password <- login$password
 
+      isolate({
+        app_tables(tables, c("surveys","projects"))
+      })
+      
+      observe({
+        req(tables$surveys)
+        req(tables$projects)
+        
+        runjs(
+          paste0(
+            "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
+                 $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
+          )
+        )
+      })
+      
       #Load modals
       source("./R/modals/survey_modal.R")
       
@@ -83,17 +112,21 @@ surveyServer <- function(id, login, tables) {
         escape = F,
         rownames = FALSE,
         selection = 'single',
+        filter = list(position='top'),
         colnames = c("Data source name", "Year(s)","Project", "Data source type",""),
-        options = list(processing = FALSE,
-                       language = list(zeroRecords = "No data sources"),
-                       columnDefs = list(
-                         list(className = "dt-center", targets = c(1)),
-                         list(orderable = FALSE, targets = c(4)),
-                         list(width = '60px',targets=c(4))
-                       ),
-                       extensions = c("FixedHeader", "Scroller"),
-                       fixedHeader = TRUE,
-                       scrollY = "400"
+        options = list(
+          processing = FALSE,
+          dom = 'tpli',
+          language = list(zeroRecords = "No data sources"),
+           columnDefs = list(
+             list(className = "dt-center", targets = c(1)),
+             list(orderable = FALSE, targets = c(4)),
+             list(targets = c(4),searchable = FALSE),
+             list(width = '60px',targets=c(4))
+           ),
+           extensions = c("FixedHeader", "Scroller"),
+           fixedHeader = TRUE,
+           scrollY = "400"
         )
       )
       
@@ -108,7 +141,9 @@ surveyServer <- function(id, login, tables) {
         x$range <- apply(x[,c("year_0","year_1")],1,year_range)
         d <- x[,c("survey","range","project","survey_type_description","Buttons")]
         
-        DT::replaceData(proxy, d, resetPaging = FALSE, rownames = FALSE)
+        proxy %>% 
+          DT::replaceData(data = d, resetPaging = FALSE, rownames = FALSE) %>%
+          updateFilters(data = d)
       })
      
       ##Remove modal ----

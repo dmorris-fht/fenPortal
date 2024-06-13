@@ -170,19 +170,11 @@ survey_modal_dialog <- function(session, d, edit) {
         inputId = ns("final_edit"),
         label = x,
         icon = shiny::icon("edit"),
-      ),
-      shiny::actionButton(
-        inputId = ns("dismiss_modal"),
-        label = "Close",
       )
     )
   ) %>% shiny::showModal()
   
 }
-
-
-
-
 
 project_modal_dialog <- function(session) {
   ns <- session$ns
@@ -207,10 +199,6 @@ project_modal_dialog <- function(session) {
       shiny::actionButton(
         inputId = ns("add_new_project"),
         label = "Add project",
-      ),
-      shiny::actionButton(
-        inputId = ns("dismiss_modal"),
-        label = "Close",
       )
     )
   ) %>% shiny::showModal()

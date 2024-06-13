@@ -88,14 +88,12 @@ homeUI <- function(id){
                                               
                                        )
                                      )
-                         , type = 7,caption = "Loading statistics")
-                         
-                         
-                         
+                         , id = ns("module"), type = 7,caption = "Loading statistics")
                          )
-                  
                   )
-           
+    ),
+    tags$script(
+      HTML("$('#home-module').parent().removeClass('shiny-spinner-hidden')")
     )
   )
 }
@@ -104,7 +102,6 @@ homeServer <- function(id, login) {
   moduleServer(
     id,
     function(input, output, session) {
-      showSpinner("stats")
       q_taxa <- "SELECT COUNT(a.taxa), a.informal_group FROM 
                   (SELECT DISTINCT(u.nbn_taxon_version_key_for_recommended_name) AS taxa, u.informal_group
                   FROM

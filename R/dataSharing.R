@@ -321,7 +321,7 @@ dataSharingServer <- function(id, login){
           removeModal()
           showModal(
             modalDialog(
-              div(style="text-align:left",
+              div(style="width:60%; text-align:left",
                   tags$h4("Export in progress",class="loading"),
               )
               ,footer=NULL, size="s", easyClose=FALSE, fade=TRUE
