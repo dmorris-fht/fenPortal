@@ -3,8 +3,13 @@ function(input, output, session) {
   addResourcePath("tempdir", tempdir())
   
   #Session reactives----
-
-  login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, con = NA)
+  p <- "Alkal1n3F3ns!_test"
+  u <- "fen_test"
+  # u <- "dmorris"
+  # p <- "Taraxacum1!"
+  # Login reactive
+  #login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, con = NA)
+  login <- reactiveValues(username = u, password = p , test = TRUE, role = "cru")#, con = fenDb("fen_test", "Alkal1n3F3ns!_test"))
   
   # Session copies of smaller db tables ----
   tables <- reactiveValues(sites0 = NA,
@@ -28,6 +33,8 @@ function(input, output, session) {
     vegManage = 0,
     plantLists = 0,
     vegLists = 0,
+    importObs = 0,
+    spIntro = 0,
     dataSharing = 0,
     installsManage = 0,
     loggersManage = 0,
@@ -81,6 +88,12 @@ function(input, output, session) {
         }
         if(input$menu == "vegLists"){
           n$vegLists <- n$vegLists + 1
+        }
+        if(input$menu == "importObs"){
+          n$importObs <- n$importObs + 1
+        }
+        if(input$menu == "spIntro"){
+          n$spIntro <- n$spIntro + 1
         }
         if(input$menu == "installsManage"){
           n$installsManage <- n$installsManage + 1
@@ -164,6 +177,25 @@ function(input, output, session) {
           vegListsServer("vegLists", tables)
         }
       })
+      
+      # Initialise importObs  ----
+      observe({
+        if(login$role == "cru"){
+          if(n$importObs == 1){
+            importObsServer("importObs", login)
+          }
+        }else{
+          shinyjs::hide(selector = "a[data-value='importObs']" )
+        }
+      })
+      
+      # Initialise spIntro  ----
+      observe({
+        if(n$spIntro == 1){
+          spIntroServer("spIntro", login, tables)
+        }
+      })
+      
       # Initialise dataSharing  ----
       observe({
         if(login$role == "cru"){

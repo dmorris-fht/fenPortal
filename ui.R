@@ -49,7 +49,7 @@ dashboardPage(
         menuItem("Survey & monitoring tools", icon = icon("tools"), expandedName = "monTools",
                  menuSubItem("Plant lists", tabName = "plantLists"),
                  menuSubItem("Vegetation data", tabName = "vegLists"),
-                 menuSubItem("Import site observations", tabName = "importObs")
+                 menuSubItem("Import target notes", tabName = "importObs")
         ),
         menuItem("Species introductions", icon = icon("plus"), tabName = "spIntro"),
         menuItem("Data sharing", icon = icon("share"), tabName = "dataSharing"),
