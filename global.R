@@ -3,7 +3,7 @@ library(shiny)
 library(shinyjs)
 library(shinydashboard)
 library(shinycssloaders)
-library(shinydisconnect) #NEEDS INSTALLING ON SERVER
+#library(shinydisconnect) # Not in use
 library(DT)
 library(shinyvalidate)
 
