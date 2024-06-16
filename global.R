@@ -687,13 +687,15 @@ fetch_agol <- function( url, where, geometry, attachments){
   }
   
   if(geometry){
-    url$query <- list(
+    url2 <- parse_url(paste(u,"/query",sep=""))
+    url2$query <- list(
       where = w,
       returnGeometry = "true",
       outFields = "*",
+      outSR = "27700",
       f = "geoJSON")
     
-    request <- build_url(url)
+    request <- build_url(url2)
     resp <- GET(request)
     
     raw <- rawToChar(resp$content)
