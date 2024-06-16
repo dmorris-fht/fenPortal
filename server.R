@@ -3,14 +3,8 @@ function(input, output, session) {
   addResourcePath("tempdir", tempdir())
   
   #Session reactives----
-  p <- "Alkal1n3F3ns!_test"
-  u <- "fen_test"
-  # u <- "dmorris"
-  # p <- "Taraxacum1!"
-  # Login reactive
-  #login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, con = NA)
-  login <- reactiveValues(username = u, password = p , test = TRUE, role = "cru")#, con = fenDb("fen_test", "Alkal1n3F3ns!_test"))
-  
+  login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, con = NA)
+
   # Session copies of smaller db tables ----
   tables <- reactiveValues(sites0 = NA,
                            sites = NA,
