@@ -84,7 +84,7 @@ dashboardPage(
     tags$script(HTML("$('body').addClass('fixed');")),
     
     #Login page
-    #loginUI("loginForm"),
+    loginUI("loginForm"),
     
     
     tabItems(

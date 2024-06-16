@@ -3,6 +3,8 @@ function(input, output, session) {
   addResourcePath("tempdir", tempdir())
   
   #Session reactives----
+
+  # Login reactive
   login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, con = NA)
 
   # Session copies of smaller db tables ----
