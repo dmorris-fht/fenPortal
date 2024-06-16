@@ -35,7 +35,7 @@ library(geojsonsf) #?
 library(jsonlite)
 library(magick) # seems to have installed
 
-library(slickR)
+#library(slickR) # Not in use
 library(base64enc)
 
 library(RPostgreSQL) 
@@ -1088,8 +1088,8 @@ app_tables <- function(tables,t){
 # App database tables and lookups ----
 
 #uksi
-uksi_full <- read.csv("./www/uksi.csv", header = TRUE)
-uksi_rec <- read.csv("./www/uksi_rec.csv", header = TRUE)
+uksi_full <- read.csv("./www/uksi.csv", header = TRUE, encoding = "UTF-8")
+uksi_rec <- read.csv("./www/uksi_rec.csv", header = TRUE, encoding = "UTF-8")
 uksi_pl_rec <- uksi_rec[uksi_rec$informal_group %in% c("flowering plant","fern","conifer","stonewort","horsetail","clubmoss","hornwort","liverwort","moss","quillwort"),]
 
 # Taxon names with qualifiers and authorities
