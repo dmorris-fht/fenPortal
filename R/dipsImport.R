@@ -228,6 +228,7 @@ dipsImportServer <- function(id,login,tables) {
       
       observe({
         req(import$data)
+        req(import$csv == 1 || import$agol == 1)
         x <- import$data[,c("install_name","dip_date_time","dip_measurer","dip_depth_top")]
         proxy_DT %>% DT::replaceData(data = x,resetPaging = TRUE, rownames = FALSE)
       })
@@ -466,12 +467,25 @@ dipsImportServer <- function(id,login,tables) {
           
           import$data <- i[,c("id","install_name","dip_date_time","dip_measurer","dip_depth_top","dip_notes","dip_null")]
           colnames(import$data)[1] <- c("install")
-
-          import$csv <- 1
+          
+          # Check cols contain valid data
+          if(
+            (nrow(import$data) > 0) &&
+            sum(apply(import$data[c("dip_date_time")],1,function(x){!IsDate(x,"%Y-%m-%d %H:%M")})) == 0 &&
+            sum(apply(import$data[c("dip_depth_top")],1,function(x){!(is.numeric(x) && floor(as.numeric(x)) == as.numeric(x))})) == 0 &&
+            sum(!(import$data$dip_null %in% c(NA,1,2,3,4,5))) == 0
+            ){
+            import$csv <- 1
+            
+            shinyjs::hide("importAGOLtext")
+            shinyjs::show("importCSVtext") 
+            }else{
+              import$csv <- 0
+              
+              }
           })
 
-        shinyjs::hide("importAGOLtext")
-        shinyjs::show("importCSVtext") 
+        
       })
 
       #Import csv data to database
@@ -681,7 +695,7 @@ dipsImportServer <- function(id,login,tables) {
         modalDialog(
           div(
             tags$h4("Importing",class="loading")
-            ,style="width:60%; text-align:left")
+            ,style="width:100%; text-align:left")
           , footer=NULL,size="s",easyClose=FALSE,fade=TRUE)
       }
       
