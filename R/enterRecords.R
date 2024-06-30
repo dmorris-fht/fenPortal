@@ -459,12 +459,16 @@ enterRecordsServer <- function(id, login, tables) {
       # Module initialisation ----
       isolate({
         app_tables(tables, c("sites","subsites","surveys"))
+        
+        uksi_load(c(0,1))
       })
       
       observe({
         req(tables$sites)
         req(tables$surveys)
         req(tables$subsites)
+        req(choices_uksi)
+        req(choices_uksi_1)
         
         runjs(
           paste0(
@@ -1177,7 +1181,7 @@ enterRecordsServer <- function(id, login, tables) {
         future_promise({
           showModal(
             modalDialog(
-              div(style="text-align:left",
+              div(style="text-align:left;width:60%",
                   tags$h4("Uploading",class="loading"),
               )
               ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE

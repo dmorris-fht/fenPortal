@@ -13,7 +13,7 @@ importRecordsUI <- function(id){
                                 column(12,
                                        h3("Import records"),
                                        HTML("<p>Import a comma-separated value (.csv) file of records. 
-                                         Download the import template from <a href='./templates/import_template.csv'>here</a>.</p>
+                                         Download the import template from <a href='./templates/records_import_template.csv'>here</a>.</p>
                                             <p>Follow the workflow to validate the imported file and then upload the records to the database.</p>
                                             "),
                                       column(3,
@@ -136,17 +136,24 @@ importRecordsServer <- function(id, login, tables) {
     id,
     function(input, output, session) {
       
-      # Initialisation ----
+      # Module initialisation ----
         
         source("./R/modals/record_import_modals.R")
       
         user <- login$username
         password <- login$password
         
+        isolate({
+          app_tables(tables, c("sites","subsites","surveys"))
+          
+          uksi_load(c(0))
+        })
+        
         observe({
           req(tables$sites)
           req(tables$surveys)
           req(tables$subsites)
+          req(choices_uksi)
           
           runjs(
             "$('#importRecords-module').parent().addClass('shiny-spinner-hidden');
@@ -171,7 +178,7 @@ importRecordsServer <- function(id, login, tables) {
                              df_t = NULL, dt_row_t = NULL, 
                              mode = NA)
        
-     #Data tables ----
+      #Data tables ----
       ## Csv table  ----
       x0 <- read.csv("./www/templates/import_template.csv", header = T)
       x1 <- x0
@@ -1010,7 +1017,7 @@ importRecordsServer <- function(id, login, tables) {
       observeEvent(input$up_1,{
         showModal(
           modalDialog(
-            div(style="text-align:left",
+            div(style="text-align:left;width:60%",
                 tags$h4("Uploading",class="loading"),
             )
             ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE
