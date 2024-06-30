@@ -3,7 +3,7 @@ library(shiny)
 library(shinyjs)
 library(shinydashboard)
 library(shinycssloaders)
-library(shinydisconnect) #NEEDS INSTALLING ON SERVER
+#library(shinydisconnect) # Not in use
 library(DT)
 library(shinyvalidate)
 
@@ -35,7 +35,7 @@ library(geojsonsf) #?
 library(jsonlite)
 library(magick) # seems to have installed
 
-library(slickR)
+#library(slickR) # Not in use
 library(base64enc)
 
 library(RPostgreSQL) 
@@ -47,6 +47,9 @@ library(pool)
 library(scales) #?
 library(readr)
 library(RPostgres)
+
+# Shiny options ----
+options(shiny.maxRequestSize = 30*1024^2) # 30 MB limit
 
 # Functions to handle missing values ----
 blank <- function(x){ifelse(!isTruthy(x),NA,x)}
@@ -139,8 +142,9 @@ null_text <- function(con, x, y){ifelse(isTruthy(x),paste0(y,"='",postgresqlEsca
 null_num <- function(x, y){ifelse(isTruthy(x),paste0(y,"=",x),paste0(y,"= NULL"))}
 
 null_date_val <- function(x){
-  ifelse(isTruthy(x),
-         paste0("TO_DATE('", x ,"','yyyy-mm-dd')"),
+  
+  ifelse(isTruthy(x) && length(x) > 0,
+         paste0("TO_DATE('", format(x,"%Y-%m-%d") ,"','yyyy-mm-dd')"),
          "NULL")
 }
 null_timestamp_val <- function(x){
@@ -189,37 +193,66 @@ year_range <- function(v){
 
 start_end <- function(s,e){
   if(!is.na(s) && !is.na(e)){
-    return(paste0(s,"-",e))
+    return(paste_na.rm(c(s," - ",e),s=""))
   }
   if(!is.na(s) && is.na(e)){
-    return(paste0(s,"-"))
+    return(paste_na.rm(c(s," - "),s=""))
   }
   if(is.na(s) && !is.na(e)){
-    return(paste0("-",e))
+    return(paste_na.rm(c(" - ",e),s=""))
   }
 }
 
-date_range <- function(d,s,e,ms,me,ys,ye,ss,se,sys,sye){
+date_range <- function(x){
+  d <- x[1] # date
+  m <- as.numeric(x[13]) # added later, so must be specified last in argument
+  y <- as.numeric(x[14]) # added later, so must be specified last in argument
+  ds <- x[2] # start date
+  de <- x[3] # end date
+  ms <- as.numeric(x[4]) # start month
+  me <- as.numeric(x[5]) # end month
+  ys <- x[6] # start year
+  ye <- x[7] # end year
+  ss <- x[8] # survey start date
+  se <- x[9] # survey start date
+  sys <- x[10] # survey start year
+  sye <- x[11] # survey end year
   if(!is.na(d)){
-    return(format(d,"%d/%m/%Y"))
+    #return(format(d,"%Y-%m-%d"))
+    return(d)
   }
-  if(!is.na(s) || !is.na(e)){
-    return(start_end(format(s,"%d/%m/%Y"),format(e,"%d/%m/%Y")))
+  if(!is.na(m) || !is.na(y)){
+    if(is.na(m)){
+      return(y)
+    }else{
+      paste_na.rm(c(as.character(as.Date(ISOdate(y, m, 1)))," - ",as.character(as.Date(ISOdate(y, m+1, 1))-1)),s="")
+    }
+  }
+  if(!is.na(ds) || !is.na(de)){
+    #return(start_end(format(ds,"%Y-%m-%d"),format(de,"%Y-%m-%d")))
+    return(start_end(ds,de))
   }
   if(!is.na(ms) || !is.na(me)){
     if(is.na(me)){
-      return(paste0(as.Date(ISOdate(ys, ms, 1)),"-",as.Date(ISOdate(ys, ms+1, 1))-1))
+      return(
+        paste_na.rm(c(as.character(as.Date(ISOdate(ys, ms, 1)))," - ",as.character(as.Date(ISOdate(ys, ms+1, 1))-1)),s="")
+        )
     }
     if(is.na(ms)){
-      return(paste0(as.Date(ISOdate(ye, me, 1)),"-",as.Date(ISOdate(ye, me+1, 1))-1))
+      return(
+        paste_na.rm(c(as.Date(ISOdate(ye, me, 1))," - ",as.character(as.Date(ISOdate(ye, me+1, 1))-1)),s="")
+        )
     }
-    return(paste0(as.Date(ISOdate(ys, ms, 1)),"-",as.Date(ISOdate(ye, me+1, 1))-1))
+    return(
+      paste_na.rm(c(as.character(as.Date(ISOdate(ys, ms, 1)))," - ",as.character(as.Date(ISOdate(ye, me+1, 1))-1)),s="")
+      )
   }
   if(!is.na(ys) || !is.na(ye)){
     return(start_end(ys,ye))
   }
   if(!is.na(ss) || !is.na(se)){
-    return(start_end(format(ss,"%d/%m/%Y"),format(se,"%d/%m/%Y")))
+    #return(start_end(format(ss,"%Y-%m-%d"),format(se,"%Y-%m-%d")))
+    return(start_end(ss,se))
   }
   if(!is.na(sys) || !is.na(sye)){
     return(start_end(sys,sye))
@@ -575,7 +608,6 @@ fetch_agol <- function( url, where, geometry, attachments){
   
   u <- url
   w <- ifelse(!isTruthy(where) || where == "*","OBJECTID > 0",where)
-  g <- ifelse(geometry == TRUE,"true","false")
   a <- attachments
   
   r <- list("error" = NA, "data" = NA, "attach" = NA)
@@ -610,7 +642,7 @@ fetch_agol <- function( url, where, geometry, attachments){
   
   url$query <- list(
     where = w,
-    returnGeometry = g,
+    returnGeometry = "false",
     outFields = "*",
     f = "json")
   
@@ -626,15 +658,20 @@ fetch_agol <- function( url, where, geometry, attachments){
   }
   )
   
-  if(is.na(resp)){
-    r$error <- "Request on URL returned an error"
+  if(!isTruthy(resp)){
+    r$error <- "Invalid URL"
     return(r)
-    }
+  }
   
   raw <- rawToChar(resp$content)
   Encoding(raw) <- "UTF-8"
   
   d <- fromJSON(raw)
+  
+  if(isTruthy(d$error$code)){
+    r$error <- d$error$message
+    return(r)
+  }
   
   #Extract data frame and fields
   x <- d$features$attributes
@@ -645,16 +682,27 @@ fetch_agol <- function( url, where, geometry, attachments){
   x <- x[,-which(colnames(x)== "OBJECTID" | colnames(x) == "GlobalID")] #Drop AGOL id fields
   
   tracking <- which(colnames(x) == "last_edited_user" | colnames(x) == "last_edited_date" | colnames(x) == "created_user" | colnames(x) == "created_date")
-  colnames(x)[tracking] <- paste("source_",colnames(x)[tracking],sep="")    #change tracking column names
-  
-  if(g == "true"){
-    if(d$geometryType == "esriGeometryPoint"){
-      x$x <- d$features$geometry$x
-      x$y <- d$features$geometry$y
-      x <- st_as_sf(x,coords = c("x","y"))
-      x <- st_set_crs(x,d$spatialReference$wkid)
-    }
+  if(length(tracking) > 0){
+    colnames(x)[tracking] <- paste("source_",colnames(x)[tracking],sep="")    #change tracking column names
   }
+  
+  if(geometry){
+    url2 <- parse_url(paste(u,"/query",sep=""))
+    url2$query <- list(
+      where = w,
+      returnGeometry = "true",
+      outFields = "*",
+      outSR = "27700",
+      f = "geoJSON")
+    
+    request <- build_url(url2)
+    resp <- GET(request)
+    
+    raw <- rawToChar(resp$content)
+    Encoding(raw) <- "UTF-8"
+    
+    x$geom <- apply(geojson_wkt(raw)["geometry"],1,unlist) # geojson to WKT
+    }
   
   data <- x
   
@@ -921,10 +969,11 @@ app_tables <- function(tables,t){
                       ST_TRANSFORM(p.geom, 4326) AS geom,
                       p.site AS site,
                       p.subsite AS subsite,
-                      p.transect,
+                      p.group,
                       p.plot,
                       p.plot_reference,
                       p.gridref,
+                      p.type,
                       p.transect_side,
                       p.dim,
                       p.note,
@@ -1039,43 +1088,58 @@ app_tables <- function(tables,t){
 
 # App database tables and lookups ----
 
-#uksi
-uksi_full <- read.csv("./www/uksi.csv", header = TRUE)
-uksi_rec <- read.csv("./www/uksi_rec.csv", header = TRUE)
-uksi_pl_rec <- uksi_rec[uksi_rec$informal_group %in% c("flowering plant","fern","conifer","stonewort","horsetail","clubmoss","hornwort","liverwort","moss","quillwort"),]
+uksi_full <- NULL
+choices_uksi <- NULL
+choices_uksi_1 <- NULL
+choices_uksi_plants <- NULL
+choices_fspp <- NULL
+string_fspp <- NULL
+choices_afspp <- NULL
+string_afspp <- NULL
 
-# Taxon names with qualifiers and authorities
-choices_uksi <- uksi_full$nbn_taxon_version_key
-names(choices_uksi) <- uksi_full$full_name
-
-# Taxon names with qualifiers and without authorities
-choices_uksi_1 <- uksi_full$nbn_taxon_version_key
-names(choices_uksi_1) <- uksi_full$name
-
-# Taxon plant choices
-choices_uksi_plants <- uksi_pl_rec$nbn_taxon_version_key
-names(choices_uksi_plants) <- uksi_pl_rec$full_name
-
-# Taxon groups
-tgps <- read.csv("./www/taxon_groups.csv",header= TRUE)
-choices_tgps <- tgps$x
-
-# Fen plant spp
-choices_fenspp <- c(0,1,2)
-names(choices_fenspp) <- c("Select an option","All fen species", "Alkaline fen species")
+uksi_load <- function(x){
+  if(0 %in% x && !isTruthy(choices_uksi)){
+    if(!isTruthy(uksi_full)){
+      uksi_full <<- read.csv("./www/uksi.csv", header = TRUE, encoding = "UTF-8")
+    }
+    # Taxon names with qualifiers and authorities
+    choices_uksi <<- uksi_full$nbn_taxon_version_key
+    names(choices_uksi) <<- uksi_full$full_name
+  }
+  if(1 %in% x && !isTruthy(choices_uksi_1)){
+    if(!isTruthy(uksi_full)){
+      uksi_full <<- read.csv("./www/uksi.csv", header = TRUE, encoding = "UTF-8")
+    }
+    # Taxon names with qualifiers and without authorities
+    choices_uksi_1 <<- uksi_full$nbn_taxon_version_key
+    names(choices_uksi_1) <<- uksi_full$name
+  }
+  if(2 %in% x && !isTruthy(choices_uksi_plants)){
+    if(!isTruthy(uksi_pl_rec)){
+      uksi_pl_rec <<- read.csv("./www/uksi_pl_rec.csv",header = TRUE, encoding = "UTF-8")
+    }
+    # Taxon plant choices
+    choices_uksi_plants <<- uksi_pl_rec$nbn_taxon_version_key
+    names(choices_uksi_plants) <<- uksi_pl_rec$full_name
+  }
+  if(3 %in% x && !isTruthy(choices_fspp) && !isTruthy(choices_afspp)){
+    if(!isTruthy(fspp)){
+      fspp <<- read.csv("./www/fen_spp.csv",header = TRUE, encoding = "UTF-8")
+    }
+    # Fen plant spp
+    choices_fspp <<- fspp$nbn_taxon_version_key_for_recommended_name
+    names(choices_fspp) <<- fspp$taxon_latest
+    string_fspp <<- paste0("('",paste(choices_fspp,collapse="','"),"')")
+    
+    choices_afspp <<- choices_fspp[which(fspp$alkaline_fen == TRUE)]
+    string_afspp <<- paste0("('",paste(choices_afspp,collapse="','"),"')")
+  }
+}
 
 con_global0 <- poolCheckout(con_global)
 
-fspp <- dbGetQuery(con_global0, "SELECT nbn_taxon_version_key_for_recommended_name, taxon_latest, alkaline_fen_oxon AS alkaline_fen FROM lookups.fen_spp ORDER BY taxon_latest")
-choices_fspp <- fspp$nbn_taxon_version_key_for_recommended_name
-names(choices_fspp) <- fspp$taxon_latest
-string_fspp <- paste0("('",paste(choices_fspp,collapse="','"),"')")
-
-choices_afspp <- choices_fspp[which(fspp$alkaline_fen == TRUE)]
-string_afspp <- paste0("('",paste(choices_afspp,collapse="','"),"')")
-
 # Record status
-choices_status <-c(NULL,dbGetQuery(con_global,"SELECT DISTINCT(status) AS status FROM records.records WHERE status IS NOT NULL ORDER BY status"))
+choices_status <-c(NULL,dbGetQuery(con_global0,"SELECT DISTINCT(status) AS status FROM records.records WHERE status IS NOT NULL ORDER BY status"))
 
 # Verification categories
 verification <- dbGetQuery(con_global0, "SELECT code, description FROM lookups.lookup_verification")
