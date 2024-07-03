@@ -58,3 +58,17 @@ $("#queryRecords-resultsMap").on('mousemove',function(event){
     
   }
 );
+
+// Open base65 image in new
+
+function openImg(data){
+  let w = window.open('about:blank');
+  let image = new Image();
+  image.src = data;
+  image.style.maxHeight = "100%";
+  setTimeout(function(){
+    w.document.getElementsByTagName('body')[0].innerHTML = image.outerHTML;
+  }, 0);
+}
+
+
