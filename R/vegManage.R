@@ -82,8 +82,9 @@ vegManageServer <- function(id, login, tables) {
       # Module initialisation ----
       isolate({
         app_tables(tables, c("sites","subsites","surveys","plots"))
-        
+
         uksi_load(c(2))
+
       })
       
       observe({
@@ -92,8 +93,9 @@ vegManageServer <- function(id, login, tables) {
         req(tables$subsites)
         req(tables$surveys)
         req(tables$plots)
+
         req(choices_uksi_plants)
-        
+
         runjs(
           paste0(
           "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
@@ -609,6 +611,7 @@ vegManageServer <- function(id, login, tables) {
             "Plot name is not unique"
             }
         })
+
         iv_modal$add_rule("type",sv_required())
         iv_modal$enable()
         
@@ -677,6 +680,7 @@ vegManageServer <- function(id, login, tables) {
                           dim = ",null_text_val(con0,input$dim),",
                           note = ",null_text_val(con0,input$note),",
                           type = ",null_text_val(con0,input$type),"
+                          note = ",null_text_val(con0,input$note)," 
                         WHERE id = ",id,
                       " RETURNING 
                           id,
@@ -742,8 +746,7 @@ vegManageServer <- function(id, login, tables) {
           
           future_promise({
             con0 <- fenDb0(user,password)
-            q <- paste0("INSERT INTO spatial.monitoring_vegetation 
-                        (site,subsite,group,plot,gridref,type,transect_side,dim,note)
+            q <- paste0("INSERT INTO spatial.monitoring_vegetation (site,subsite,group,plot,gridref,type,transect_side,dim,note)
                         VALUES (",
                           as.numeric(input$site),",",
                           null_num_val(input$subsite),",",
@@ -1855,7 +1858,7 @@ vegManageServer <- function(id, login, tables) {
             req(input$gridref)
             req(input$plot)
             req(input$type)
-            
+  
             if(
               nchar(gsub(" ", "",input$gridref)) == 12 &&
               validate_gf(input$gridref, 

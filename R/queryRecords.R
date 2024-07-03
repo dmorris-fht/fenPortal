@@ -343,7 +343,6 @@ queryRecordsServer <- function(id, login, tables) {
       # Module initialisation ----
       isolate({
         app_tables(tables, c("sites","subsites","surveys","projects"))
-        
         uksi_load(c(0,3))
       })
       
@@ -355,7 +354,7 @@ queryRecordsServer <- function(id, login, tables) {
         req(choices_uksi)
         req(string_fspp)
         req(string_afspp)
-        
+
         runjs(
           paste0(
             "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');

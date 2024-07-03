@@ -468,7 +468,7 @@ dipsImportServer <- function(id,login,tables) {
           import$data <- i[,c("id","install_name","dip_date_time","dip_measurer","dip_depth_top","dip_notes","dip_null")]
           colnames(import$data)[1] <- c("install")
 
-          # Check cols contain valid data
+                    # Check cols contain valid data
           if(
             isTruthy(import$data) &&
             (nrow(import$data) > 0) &&
@@ -487,6 +487,7 @@ dipsImportServer <- function(id,login,tables) {
             }else{
               import$csv <- 0
               invalid_data()
+
               }
           })
 
