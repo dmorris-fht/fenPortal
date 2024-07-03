@@ -35,14 +35,20 @@ enterRecordsUI <- function(id){
                                         inputId = ns("subsite_check"), value = FALSE, label = NULL
                                       ) %>% tagAppendAttributes(class = 'compact')
                                   ),
-                                  div(style="float:left;width:90%",
+                                  div(style="float:left;width:80%",
                                       selectizeInput(
                                         inputId = ns("subsite"),
                                         label = "Subsite",
                                         choices = c(""),
                                         multiple = TRUE,
                                         options = list(maxItems = 1, placeholder = 'Select a subsite (optional)')
-                                      ) %>% tagAppendAttributes(class = 'compact')
+                                      ) %>% tagAppendAttributes(class = 'compact')),
+                                  div(style="float:left;width:10%;margin-top:21px",    
+                                          actionButton(
+                                            inputId = ns("new_subsite"),
+                                            icon = icon("plus"),
+                                            label = ""
+                                          )
                                   )
                                 )
                          ),
@@ -236,7 +242,7 @@ enterRecordsUI <- function(id){
                                         inputId = ns("survey_check"), value = FALSE, label = NULL
                                       ) %>% tagAppendAttributes(class = 'compact')
                                   ),
-                                  div(style="float:left;width:90%",
+                                  div(style="float:left;width:80%",
                                       selectizeInput(
                                         inputId = ns("survey"),
                                         label = "Data source",
@@ -244,6 +250,13 @@ enterRecordsUI <- function(id){
                                         multiple = TRUE,
                                         options = list(maxItems = 1, placeholder = 'Select a data source')
                                       ) %>% tagAppendAttributes(class = 'compact')
+                                  ),
+                                  div(style="float:left;width:10%;margin-top:21px",    
+                                      actionButton(
+                                        inputId = ns("new_survey"),
+                                        icon = icon("plus"),
+                                        label = ""
+                                      )
                                   )
                                 )
                          )      
@@ -458,7 +471,7 @@ enterRecordsServer <- function(id, login, tables) {
 
       # Module initialisation ----
       isolate({
-        app_tables(tables, c("sites","subsites","surveys"))
+        app_tables(tables, c("sites","subsites","surveys","projects"))
         
         uksi_load(c(0,1))
       })
@@ -467,6 +480,7 @@ enterRecordsServer <- function(id, login, tables) {
         req(tables$sites)
         req(tables$surveys)
         req(tables$subsites)
+        req(tables$projects)
         req(choices_uksi)
         req(choices_uksi_1)
         
@@ -478,6 +492,10 @@ enterRecordsServer <- function(id, login, tables) {
         )
       })
       
+      #Load modals
+      source("./R/modals/site_modal.R")
+      source("./R/modals/survey_modal.R")
+
       # Update input boxes once tables loaded
       updateSelectizeInput(session,
                            "taxon_nbn",
@@ -615,8 +633,10 @@ enterRecordsServer <- function(id, login, tables) {
         }
         if(input$subsite_check == 1){
           shinyjs::disable('subsite')
+          shinyjs::disable("new_subsite")
           updateSelectizeInput(session,'subsite',selected = input$subsite)}
       })
+      
       observeEvent(input$taxon_nbn_check,{
         if(input$taxon_nbn_check == 0){
           shinyjs::enable('taxon_nbn')
@@ -719,6 +739,7 @@ enterRecordsServer <- function(id, login, tables) {
         }
         if(input$survey_check == 1){
           shinyjs::disable('survey')
+          shinyjs::disable("new_survey")
           updateSelectizeInput(session,'survey',selected = input$survey)}
       })
       observeEvent(input$start_year_check,{
@@ -792,32 +813,30 @@ enterRecordsServer <- function(id, login, tables) {
       )
       
       #Data table definition ----
-      
-      # marked <- reactive({
-      #   which(d$data$validation == -1)
-      # })
-      
+
       output$recordsTable <- DT::renderDT(
         {
-          shiny::isolate(d$data)
-          
-          x <- d$data[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
-        
-          return(x)
+          isolate(
+            d$data[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
+          )
         }
         ,
-        escape = F,
+        server = TRUE,
+        escape = FALSE,
         rownames = FALSE,
+        filter = list(position='top'),
         selection = 'single',
         colnames =  c("Taxon","Site","Subsite","Gridref","Date",""),
         options = list(processing = TRUE,
+                       dom = 'tlpi',pageLength = 100,
                        columnDefs = list(
                           list(orderable = FALSE, targets = c(5)),
+                          list(targets = c(5),searchable = FALSE),
                           list(width = '10px',targets=c(5))
                        ),
-                       extensions = c("FixedHeader"),#, "Scroller")
+                       extensions = c("FixedHeader"),
                        fixedHeader = TRUE,
-                       scrollY = "50vh"
+                       scrollY = "55vh"
         )
       ) 
       
@@ -827,9 +846,10 @@ enterRecordsServer <- function(id, login, tables) {
       
       observe({
           x <- d$data[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
-
-          DT::replaceData(proxy, x, resetPaging = FALSE, rownames = FALSE)
-      })
+          proxy %>%
+            DT::replaceData(data = x, resetPaging = FALSE, rownames = FALSE) %>%
+              updateFilters(data = x)
+          })
       
       #Record controls ----
       
@@ -1195,6 +1215,7 @@ enterRecordsServer <- function(id, login, tables) {
                                 overwrite = FALSE,
                                 upsert.using = "guid"
                                 )
+          
           dbDisconnect(con)
           return(insert)
           })%...>% (function(insert) {
@@ -1266,6 +1287,355 @@ enterRecordsServer <- function(id, login, tables) {
               ,style="width:100%;padding:20px"),
           , footer=NULL,size="m",easyClose=TRUE,fade=TRUE)
       }
+      
+      # Add new subsite ----
+      
+      observeEvent(input$new_subsite,{
+        subsite_modal_dialog(session, d = NULL, mode = "add")
+        updateSelectizeInput(session,
+                             "site_modal",
+                             choices=choices_site(), 
+                             selected = "",
+                             server = FALSE,
+                             options = list(
+                               maxItems = 1,
+                               onInitialize = I('function() { this.setValue(""); }')
+                               )
+                             )
+        
+      # Modal validation
+        iv2 <- InputValidator$new()
+        iv2$add_rule("site_modal",sv_required())
+        iv2$add_rule("subsite_modal",sv_required())
+        iv2$add_rule("gridref_modal",function(value){
+          v <- validate_gf(input$gridref_modal, 
+                           s = as.numeric(input$site_modal), 
+                           ss = NULL,
+                           sites0 = tables$sites0,
+                           subsites0 = NULL)
+          if(v$error == 1 && isTruthy(input$gridref_modal)){
+            v$message
+          }
+        })
+        iv2$add_rule("subsite_modal",function(value){
+          if(input$subsite_modal %in% tables$subsites[tables$subsites$site == as.numeric(input$site_modal),"subsite"]){
+            return("Subsite already exists")
+          }
+        })
+        iv2$enable()
+      
+        })
+      
+      observe({
+        if(
+          isTruthy(input$site_modal) && isTruthy(input$subsite_modal) && 
+          !(input$subsite_modal %in% tables$subsites[tables$subsites$site == as.numeric(input$site_modal),"subsite"]) &&
+          validate_gf(input$gridref_modal, 
+                      s = as.numeric(input$site_modal), 
+                      ss = NULL,
+                      sites0 = tables$sites0,
+                      subsites0 = NULL)$error == 0
+        ){
+          shinyjs::enable("final_edit_subsite")
+        }else{
+          shinyjs::disable("final_edit_subsite")
+        }
+      })
+      
+      observeEvent(input$final_edit_subsite,{
+        # submit new subsite
+        req(isTruthy(input$site_modal) && isTruthy(input$subsite_modal) && 
+              !(input$subsite_modal %in% tables$subsites[tables$subsites$site == as.numeric(input$site_modal),"subsite"]) &&
+              validate_gf(input$gridref_modal, 
+                          s = as.numeric(input$site_modal), 
+                          ss = NULL,
+                          sites0 = tables$sites0,
+                          subsites0 = NULL)$error == 0)
+        
+        future_promise({
+          con0 <- fenDb0(user,password)
+          q <- paste0("INSERT INTO spatial.fen_subsites (site,subsite,gridref,vc,note) VALUES (",
+                      null_num_val(input$site_modal),",",
+                      null_text_val(con0,input$subsite_modal),",",
+                      null_text_val(con0,input$gridref_modal),",",
+                      null_text_val(con0,input$vc_modal),",",
+                      null_text_val(con0,input$note_modal)
+                      ,") 
+                      RETURNING id")
+          insert <- dbGetQuery(con0,q)
+          dbDisconnect(con0)
+          return(insert)
+        }
+        )%...>% (function(i){
+          if(isTruthy(i)){
+            # add row to tables$subsites
+            r <- nrow(tables$subsites)
+            tables$subsites[r+1,] <- c(i,
+                                       input$site_modal,
+                                       names(choices_site())[which(choices_site() == input$site_modal)],
+                                       input$subsite_modal
+                                       )
+          }else{
+            showModal(
+              modalDialog(
+                    tags$h4("Error - cannot add new subsite"),
+                ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+              )
+              )
+          }
+          
+        })
+      })
+      
+      # Add new survey ----
+      
+      observeEvent(input$new_survey,{
+        survey_modal_dialog(session, d = NULL, mode = "add", qual = "_0")
+        
+        p <- tables$projects[order(tables$projects$project),]
+        choices_p <- p[,"id"]
+        names(choices_p) <- p[,"project"]
+        
+        updateSelectizeInput(session, "survey_type_0", choices = choices_st)
+        updateSelectizeInput(session, "project_0", choices = choices_p)
+        updateSelectizeInput(session, "sharing_0", choices = choices_sh)
+        
+        shinyjs::hide("created_user_0")
+        shinyjs::hide("created_date_0")
+        shinyjs::hide("last_edited_user_0")
+        shinyjs::hide("last_edited_date_0")
+        
+        shinyjs::enable("survey_0")
+        shinyjs::enable("survey_type_0")
+        shinyjs::enable("start_date_0")
+        shinyjs::enable("end_date_0")
+        shinyjs::enable("start_year_0")
+        shinyjs::enable("end_year_0")
+        shinyjs::enable("source_0")
+        shinyjs::enable("project_0")
+        shinyjs::enable("sharing_0")
+        shinyjs::enable("copyright_0")
+        shinyjs::enable("description_0")
+        shinyjs::enable("url_0")
+        
+        # Modal validation
+        iv <- InputValidator$new()
+        iv$add_rule("survey_0",function(value){
+          if(isTruthy(input$survey_0) && input$survey_0 %in% tables$surveys[,c("survey")]){
+            return("Data source already exists")
+          }
+        })
+        iv$add_rule("survey_0",sv_required())
+        iv$add_rule("survey_type_0",sv_required())
+        iv$add_rule("project_0",sv_required())
+        iv$add_rule("sharing_0",sv_required())
+        iv$enable()
+        
+        shinyjs::disable("final_edit_0")
+        
+        observe({
+          if(isTruthy(input$survey_type_0) &&
+             isTruthy(input$project_0) &&
+             isTruthy(input$sharing_0) &&
+             isTruthy(input$survey_0) && !(input$survey_0 %in% tables$surveys[,c("survey")])
+          ){
+            shinyjs::enable("final_edit_0")
+          }
+          else{
+            shinyjs::disable("final_edit_0")
+          }
+        })
+      })
+      
+      observeEvent(input$final_edit_0,{
+        req(isTruthy(input$survey_type))
+        req(isTruthy(input$project))
+        req(isTruthy(input$sharing))
+        req(isTruthy(input$survey_0) && !(input$survey_0 %in% tables$surveys[,c("survey")]))
+        
+        future_promise({
+          con0 <- fenDb0(user,password)
+          q <- paste0(
+            "INSERT INTO records.surveys
+            (survey, survey_type,start_date,end_date,start_year,end_year,source,project,sharing,copyright,description,url)
+            VALUES
+            ('",
+            input$survey_0 ,"',",
+            input$survey_type_0,",",
+            null_date_val(input$start_date_0),",",
+            null_date_val(input$end_date_0),",",
+            null_num_val(input$start_year_0),",",
+            null_num_val(input$end_year_0),",",
+            null_text_val(con0, input$source_0),",",
+            input$project_0,",",
+            input$sharing_0,",",
+            null_text_val(con0, input$copyright_0),",",
+            null_text_val(con0, input$description_0),",",
+            null_text_val(con0, input$url_0)
+            ,") RETURNING id, created_user, created_date"
+          )
+          insert <- dbGetQuery(con0,q)
+          dbDisconnect(con0)
+          return(insert)
+        })%...>%(function(i){
+          if(isTruthy(i)){
+            row <- list(
+              as.numeric(i$id),
+              input$survey_0,
+              as.numeric(input$survey_type_0),
+              as.Date(input$start_date_0),
+              as.Date(input$end_date_0),
+              as.numeric(ifelse(isTruthy(input$start_year_0),input$start_year_0,NA)),
+              as.numeric(ifelse(isTruthy(input$end_year_0),input$end_year_0,NA)),
+              input$source_0,
+              as.numeric(input$project_0),
+              as.numeric(input$sharing_0),
+              input$copyright_0,
+              input$description_0,
+              input$url_0,
+              i$created_user,
+              NA,
+              as.Date(i$created_date),
+              NA,
+              st[st$code == as.numeric(input$survey_type),c("description")],
+              sh[sh$code == as.numeric(input$sharing),c("description")],
+              tables$projects[tables$projects$id == as.numeric(input$project_0),c("project")]
+            )
+            tables$surveys[nrow(tables$surveys)+1,] <- row
+          }else{
+            showModal(
+              modalDialog(
+                tags$h4("Error - cannot add new data source"),
+                ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+              )
+            )
+          }
+          
+        })
+      })
+      
+      
+      
+      # Add new project ----
+      
+      # reactive to hold values in survey modal, in case new project modal is launched
+      input_survey <- reactiveValues(
+        survey = NA,
+        survey_type = NA,
+        start_date = NA,
+        end_date = NA,
+        start_year = NA,
+        end_year = NA,
+        source = NA,
+        project = NA,
+        sharing = NA,
+        copyright = NA,
+        description = NA,
+        url = NA
+      )
+      
+      ##New project controls ----
+
+      observeEvent(input$new_project,{
+        input_survey$survey <- ifelse(isTruthy(input$survey_0),input$survey_0,NA)
+        input_survey$survey_type<-ifelse(isTruthy(input$survey_type_0),input$survey_type_0,NA)
+        input_survey$start_date<-ifelse(isTruthy(input$start_date_0),input$start_date_0,NA)
+        input_survey$end_date<-ifelse(isTruthy(input$end_date_0),input$end_date_0,NA)
+        input_survey$start_year<-ifelse(isTruthy(input$start_year_0),input$start_year_0,NA)
+        input_survey$end_year<-ifelse(isTruthy(input$end_year_0),input$end_year_0,NA)
+        input_survey$source<-ifelse(isTruthy(input$source_0),input$source_0,NA)
+        input_survey$sharing<-ifelse(isTruthy(input$sharing_0),input$sharing_0,NA)
+        input_survey$copyright<-ifelse(isTruthy(input$copyright_0),input$copyright_0,NA)
+        input_survey$description<-ifelse(isTruthy(input$description_0),input$description_0,NA)
+        input_survey$url<-ifelse(isTruthy(input$url_0),input$url_0,NA)
+        
+        project_modal_dialog(session)
+        
+        iv3 <- InputValidator$new()
+        iv3$add_rule("project_new",function(value){
+          if(input$project_new %in% tables$projects$project){
+            return("Project already exists")
+          }
+        })
+        iv3$add_rule("project_new",sv_required())
+        iv$enable()
+      })
+      
+      observe({
+        if(isTruthy(input$project_new) && !(input$project_new %in% tables$projects$project)){
+          shinyjs::enable("add_new_project")
+        }else{
+          shinyjs::disable("add_new_project")
+        }
+      })
+      
+      ###Submit new project action button
+      observeEvent(input$add_new_project,{
+        #Validate form
+        req(isTruthy(input$project_new) && !(input$project_new %in% tables$projects$project))
+        
+        #Insert new project and return new id for passing back to survey form
+        future_promise({
+          con0 <- fenDb0(user,password)
+          insert <- dbGetQuery(con0, paste0("INSERT INTO records.projects (project) VALUES (",null_text_val(con0,input$project_new),
+                                                ") RETURNING id, project, created_user, last_edited_user,created_date,last_edited_date"))
+          dbDisconnect(con0)
+          return(insert)
+        }) %...>%(function(i){
+          input_survey$project <- i$id
+          #Update module project reactive and choices
+          tables$projects[nrow(tables$projects)+1,] <- i[1,]
+          removeModal()
+          
+          survey_modal_dialog(session, 
+                              c(
+                                input_survey$survey,
+                                input_survey$survey_type,
+                                input_survey$start_date,
+                                input_survey$end_date,
+                                input_survey$start_year,
+                                input_survey$end_year,
+                                input_survey$source,
+                                input_survey$project,
+                                input_survey$sharing,
+                                input_survey$copyright,
+                                input_survey$description,
+                                input_survey$url,
+                                "",
+                                "",
+                                NA,
+                                NA
+                              )
+                              , mode = "add"
+                              , qual = "_0"
+          )
+          
+          choices_p <- tables$projects$id
+          names(choices_p) <- tables$projects$project
+          
+          updateSelectizeInput(session, "survey_type_0", choices = choices_st, selected = input_survey$survey_type)
+          updateSelectizeInput(session, "project_0", choices = choices_p, selected = input_survey$project)
+          updateSelectizeInput(session, "sharing_0", choices = choices_sh, selected = input_survey$sharing)
+          
+          shinyjs::hide("created_user_0")
+          shinyjs::hide("created_date_0")
+          shinyjs::hide("last_edited_user_0")
+          shinyjs::hide("last_edited_date_0")
+          
+          shinyjs::enable("survey_0")
+          shinyjs::enable("survey_type_0")
+          shinyjs::enable("start_date_0")
+          shinyjs::enable("end_date_0")
+          shinyjs::enable("start_year_0")
+          shinyjs::enable("end_year_0")
+          shinyjs::enable("source_0")
+          shinyjs::enable("project_0")
+          shinyjs::enable("sharing_0")
+          shinyjs::enable("copyright_0")
+          shinyjs::enable("description_0")
+          shinyjs::enable("url_0")
+        })
+      })
     }
   )
 }
