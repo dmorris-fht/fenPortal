@@ -1089,6 +1089,7 @@ app_tables <- function(tables,t){
 # App database tables and lookups ----
 
 uksi_full <- NULL
+uksi_pl_rec <- NULL
 choices_uksi <- NULL
 choices_uksi_1 <- NULL
 choices_uksi_plants <- NULL
