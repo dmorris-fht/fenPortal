@@ -1375,6 +1375,13 @@ enterRecordsServer <- function(id, login, tables) {
                                        names(choices_site())[which(choices_site() == input$site_modal)],
                                        input$subsite_modal
                                        )
+            
+            showModal(
+              modalDialog(
+                tags$h4("Error - cannot add new data source"),
+                ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+              )
+            )
           }else{
             showModal(
               modalDialog(
@@ -1448,11 +1455,11 @@ enterRecordsServer <- function(id, login, tables) {
       })
       
       observeEvent(input$final_edit_0,{
-        req(isTruthy(input$survey_type))
-        req(isTruthy(input$project))
-        req(isTruthy(input$sharing))
+        req(isTruthy(input$survey_type_0))
+        req(isTruthy(input$project_0))
+        req(isTruthy(input$sharing_0))
         req(isTruthy(input$survey_0) && !(input$survey_0 %in% tables$surveys[,c("survey")]))
-        
+
         future_promise({
           con0 <- fenDb0(user,password)
           q <- paste0(
@@ -1502,6 +1509,13 @@ enterRecordsServer <- function(id, login, tables) {
               tables$projects[tables$projects$id == as.numeric(input$project_0),c("project")]
             )
             tables$surveys[nrow(tables$surveys)+1,] <- row
+            
+            showModal(
+              modalDialog(
+                tags$h4("New data source saved"),
+                ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+              )
+            )
           }else{
             showModal(
               modalDialog(

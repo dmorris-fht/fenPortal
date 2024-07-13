@@ -6,6 +6,8 @@ subsite_modal_dialog <- function(session, d, mode) {
     fluidRow(
       tagList(
         column(12,
+               HTML("<p>Create a new 'subsite' e.g. to record species from a specific area or habitat within a site.</p>
+                 <p><i>Adding a polygon boundary is not currently supported - use QGIS to do this.</i></p>"),
                column(12,
                  column(6,
                         selectizeInput(

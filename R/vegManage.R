@@ -84,7 +84,6 @@ vegManageServer <- function(id, login, tables) {
         app_tables(tables, c("sites","subsites","surveys","plots"))
 
         uksi_load(c(2))
-
       })
       
       observe({
