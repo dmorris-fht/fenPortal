@@ -1378,7 +1378,9 @@ enterRecordsServer <- function(id, login, tables) {
             
             showModal(
               modalDialog(
-                tags$h4("Error - cannot add new data source"),
+                div(style="width:100%;text-align:center",
+                tags$h4("New subsite saved")
+                ),
                 ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
               )
             )
@@ -1454,6 +1456,8 @@ enterRecordsServer <- function(id, login, tables) {
         })
       })
       
+      # Submit new survey
+      
       observeEvent(input$final_edit_0,{
         req(isTruthy(input$survey_type_0))
         req(isTruthy(input$project_0))
@@ -1504,15 +1508,18 @@ enterRecordsServer <- function(id, login, tables) {
               NA,
               as.Date(i$created_date),
               NA,
-              st[st$code == as.numeric(input$survey_type),c("description")],
-              sh[sh$code == as.numeric(input$sharing),c("description")],
+              st[st$code == as.numeric(input$survey_type_0),c("description")],
+              sh[sh$code == as.numeric(input$sharing_0),c("description")],
               tables$projects[tables$projects$id == as.numeric(input$project_0),c("project")]
             )
+
             tables$surveys[nrow(tables$surveys)+1,] <- row
             
             showModal(
               modalDialog(
-                tags$h4("New data source saved"),
+                div(style="width:100%;text-align:center",
+                    tags$h4("New data source saved"),
+                )
                 ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
               )
             )
