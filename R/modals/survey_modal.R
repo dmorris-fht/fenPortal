@@ -3,12 +3,15 @@
 survey_modal_dialog <- function(session, d, mode, qual) { 
   ns <- session$ns
   x <- "Data source"
-  if(mode == "add"){
-    x <- "Add new data source"
+  if(isTruthy(mode)){
+    if(mode == "add"){
+      x <- "Add new data source"
+    }
+    if(mode == "edit"){
+      x <- "Edit data source"
+    }
   }
-  if(mode == "edit"){
-    x <- "Edit data source"
-  }
+
   shiny::modalDialog(
     title = x,
     fluidRow(
