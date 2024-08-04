@@ -68,7 +68,7 @@ logger_modal_dialog <- function(session, serial, model, purchase_date, firmware,
         shiny::textAreaInput(
           inputId = ns("notes"),
           label = "Notes:",
-          value = ifelse(!is.na(),notes,""),
+          value = ifelse(!is.na(notes),notes,""),
           placeholder = "Add any relevant notes",
           resize = "vertical"
         )
