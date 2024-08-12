@@ -53,12 +53,15 @@ dipsImportUI <- function(id) {
               )),
               hidden(div(id = ns("csv"),
                          column(12, 
-                                p("Choose a .csv file to import. The date-time column must be formated as yyyy-mm-dd hh:mm, e.g. '2023-04-14 13:00'."),
-                                fileInput(ns("choose_csv"),label="Choose .csv file to import:", 
-                                          buttonLabel = "Browse...",
-                                          placeholder = "No file selected",
-                                          accept = ".csv"),
-                                selectInput(ns("choose_site_csv"), label = "Choose site", choices = c())
+                                p("Choose a site and a .csv file of dip records to import. The date-time column must be formated as yyyy-mm-dd hh:mm, e.g. '2023-04-14 13:00'."),
+                                selectizeInput(ns("choose_site_csv"), label = "Choose site", choices = c(), multiple = FALSE),
+                                conditionalPanel(ns = NS(id),condition = 'input.choose_site_csv !=""',
+                                                 fileInput(ns("choose_csv"),label="Choose .csv file to import:", 
+                                                           buttonLabel = "Browse...",
+                                                           placeholder = "No file selected",
+                                                           accept = ".csv")
+                                                 )
+                                
                                 )
                   )),
               
@@ -80,7 +83,7 @@ dipsImportUI <- function(id) {
                             )),
                             hidden(div(id = ns("importCSVtext"),
                                        h4("Import data"),
-                                       HTML("<p>Click the button below to import the .csv file to the database. If the database already contains a record of a measurement for a given installation and date/time
+                                       HTML("<p>Choose a site and Click the button below to import the .csv file to the database. If the database already contains a record of a measurement for a given installation and date/time
                                           then that record will be updated rather than a new record added.</p>"),
                                               textAreaInput(ns("import_notes_csv"), label = "Import notes", width = "100%", resize = "vertical"),
                                               actionButton(ns("importCSV"), label = "Import data")
@@ -189,7 +192,12 @@ dipsImportServer <- function(id,login,tables) {
           shinyjs::hide("AGOL")
           shinyjs::show("csv")
             
-          updateSelectInput(session, inputId = "choose_site_csv", choices = choices_site())
+          updateSelectizeInput(session, inputId = "choose_site_csv", 
+                               choices = choices_site(),
+                               options = list(
+                                 placeholder = 'Choose a site',
+                                 onInitialize = I('function() { this.setValue(""); }')
+                               ))
           }
           })
       
@@ -453,14 +461,15 @@ dipsImportServer <- function(id,login,tables) {
         
         req(tables$hydro_installs)
         req(input$choose_site_csv)
-        isolate({
+        
           d <- read.csv(file$datapath, header = TRUE, encoding = "UTF-8")
-
+          
           colnames(d)[1] <- "install_name"
           d$install_name <- apply(d[c("install_name")],1,trimws)
           d$dip_null <- as.integer(d$dip_null)
           d$site <- as.integer(input$choose_site_csv)
-          
+        
+        isolate({  
           i <- merge(d, tables$hydro_installs, 
                      by.x = c("site","install_name"), 
                      by.y = c("site","install_name"))
@@ -469,6 +478,8 @@ dipsImportServer <- function(id,login,tables) {
           colnames(import$data)[1] <- c("install")
 
                     # Check cols contain valid data
+          
+          
           if(
             isTruthy(import$data) &&
             (nrow(import$data) > 0) &&
