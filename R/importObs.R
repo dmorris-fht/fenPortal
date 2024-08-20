@@ -84,8 +84,6 @@ importObsServer <- function(id, login) {
       observeEvent(input$import1,{
         # Fetch AGOL data
         
-        
-
         f <- fetch_agol(input$agol_url,NULL,TRUE,TRUE)
         
         if(isTruthy(f$data) && nrow(f$data)>0){
@@ -96,8 +94,8 @@ importObsServer <- function(id, login) {
           
           # Check column names and then subset by new observations only
           if(all(colnames(f$data) %in% unlist(cols))){
-            import$data <- f$data[!(f$data$guid %in% guid),]
-            import$attach <- f$attach[!(f$attach$rel_guid %in% guid),]
+            import$data <- f$data[!(f$data$guid %in% guid$guid),]
+            import$attach <- f$attach[!(f$attach$rel_guid %in% guid$guid),]
             import$agol <- 1 #agol verifier
           }else{
             import$agol <- 0

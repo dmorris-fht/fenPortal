@@ -304,20 +304,31 @@ dipsImportServer <- function(id,login,tables) {
         f <- fetch_agol(input$agol_url,w,FALSE,TRUE)
 
           if(isTruthy(f$data) && nrow(f$data)>0){
-            shinyjs::hide("noPreview")
-            shinyjs::show("dipsPreview")
+            con0 <- poolCheckout(con_global)
+            guid <- dbGetQuery(con0,paste0("SELECT guid::varchar FROM hydro_monitoring.dips WHERE guid IN ",con_sql_string(f$data$guid)))
+            cols <- dbGetQuery(con0,"SELECT column_name FROM information_schema.columns WHERE table_schema = 'hydro_monitoring' AND table_name = 'dips'; ")
+            poolReturn(con0)
             
-            t <- merge(f$data, tables$hydro_installs, 
-                       by.x = "install", 
-                       by.y = "id") 
-            t$install_name <- apply(t[c("site_name","install_name")],1,function(x){paste(x[1],x[2],sep=" - ")}) # Add site to install name
-
-            import$data <- t
-            import$attach <- f$attach
-            import$agol <- 1 #agol verifier
-
-            shinyjs::show("importAGOLtext")
-            shinyjs::hide("importCSVtext")
+            # Check column names and then subset by new observations only
+            if(all(colnames(f$data) %in% unlist(cols))){
+              t <- merge(f$data, tables$hydro_installs, 
+                         by.x = "install", 
+                         by.y = "id") 
+              t$install_name <- apply(t[c("site_name","install_name")],1,function(x){paste(x[1],x[2],sep=" - ")}) # Add site to install name
+              import$data <- t[which(!(as.character(t$guid) %in% guid$guid)),]
+              
+              import$attach <- f$attach[which(!(as.character(f$attach$rel_guid) %in% guid$guid)),]
+              import$agol <- 1 #agol verifier
+              
+              shinyjs::hide("noPreview")
+              shinyjs::show("dipsPreview")
+              shinyjs::show("importAGOLtext")
+              shinyjs::hide("importCSVtext")
+            }else{
+              import$agol <- 0
+              import_agol_error()
+              return("Error")
+            }
         }
         else{
           import$agol <- 0
