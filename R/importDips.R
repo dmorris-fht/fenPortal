@@ -560,7 +560,7 @@ dipsImportServer <- function(id,login,tables) {
                             null_text_val(con0,d$dip_measurer),",",
                             null_num_val(d$dip_depth_top),",",
                             null_text_val(con0,d$dip_notes),",",
-                            null_num_val(d$import_null),
+                            null_num_val(d$dip_null),
                             ",(SELECT id FROM imp))"
                      )
               )
@@ -608,7 +608,7 @@ dipsImportServer <- function(id,login,tables) {
                             null_text_val(con0,d$dip_measurer),",",
                             null_num_val(d$dip_depth_top),",",
                             null_text_val(con0,d$dip_notes),",",
-                            null_num_val(d$import_null),
+                            null_num_val(d$dip_null),
                             ",(SELECT id FROM imp),'",
                             d$guid,"')"
                      )
