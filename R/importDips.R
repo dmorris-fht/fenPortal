@@ -7,7 +7,7 @@ dipsImportUI <- function(id) {
               column(12,
                      column(6,
                      h3("Import manual dipwell measurements"),
-                     HTML("<p>Use this page to import manual dipwell measurements to the database. First, specify one of the following two types of data source:</p> 
+                     HTML("<p>Use this module to import manual dipwell measurements to the database. First, specify one of the following two types of data source:</p> 
                        <ul>
                           <li><b>ArcGIS Online feature service:</b> Specify the REST URL for the layer containing the table of dipwell measurements. 
                           You can find the URL for a service on its details page - you just need to add the layer number to the end. To import from a feature service, 
@@ -360,102 +360,6 @@ dipsImportServer <- function(id,login,tables) {
           showModal(import_modal())
         })
 
-          #Yes - Insert new row into dips install table
-          # observeEvent(input$import1,{
-          #   removeModal()
-          #   
-          #   shiny::validate(need(input$agol_url, "Please include an ArcGIS Online REST URL"))
-          #   req(input$agol_url)
-          #   
-          #   showModal(import_progress_modal())
-            
-            # #Connect to database
-            # 
-            # #Insert dip import row
-            # query <- paste("INSERT INTO hydro_monitoring.dips_imports (source_type,source,notes,source_attachments) VALUES (",
-            #                1,",",
-            #                "'", input$agol_url,"',",
-            #                "'", input$import_notes_agol,"',",
-            #                input$import_attachments,
-            #                ") RETURNING id", sep="")
-            # 
-            # import_info <- dbGetQuery(con, query)
-            # import$data$dips_import <- import_info$id
-            # 
-            # if(!is.na(import_info$id)){
-            #   insert <- pgInsert(
-            #     con,
-            #     name = c("hydro_monitoring","dips"),
-            #     data.obj = import$data,
-            #     df.mode = FALSE,
-            #     partial.match = TRUE,
-            #     overwrite = FALSE,
-            #     upsert.using = c("guid")
-            #   )
-            #   
-            #   #Import attachments
-            #   if(isTruthy(input$import_attachments) && nrow(import$attach)>0){
-            #     import$attach$att <- NA
-            #     
-            #     #Download and convert attachments to binary
-            #     for(i in 1:nrow(import$attach)){
-            #       tf <- tempfile(fileext=paste0(".",
-            #                                     substr(import$attach[i,"att_type"],7,10000)
-            #       )
-            #       )
-            #       download.file(import$attach[i,c("url")], tf, mode = "wb")
-            #       z <- readRaw(tf)
-            #       r <- import$attach[i,]
-            #       r$att <- paste0("\\x", paste(z$fileRaw, collapse = ""))
-            #       
-            #       # dbExecute(con, "INSERT INTO hydro_monitoring.dips_attach (rel_guid,att_name,att_type,att_size,att) VALUES ($1,$2,$3,$4,$5)",
-            #       #           list(r$rel_guid,r$name,r$contentType, r$size ,r$att))
-            #     }
-            #     insert_attach <- pgInsert(
-            #       con,
-            #       name = c("hydro_monitoring","dips_attach"),
-            #       data.obj = import$attach,
-            #       df.mode = FALSE,
-            #       partial.match = TRUE,
-            #       overwrite = FALSE,
-            #       upsert.using = c("guid")
-            #     )
-            #   }
-            
-      #       
-      #       
-      #       
-      #       
-      #       
-      #       
-      #       
-      #         
-      #         if(insert == TRUE){
-      #           removeModal()
-      #           showModal(import_success_modal())
-      #         }
-      #         else{
-      #           showModal(import_error_modal())
-      #         }
-      #         
-      #         
-      #       }
-      #       else{
-      #         #Delete the import info record if the import fails
-      #         dbGetQuery(con,paste("DELETE FROM hydro_monitoring.dips_imports WHERE id = ",import_info$id,sep=""))
-      #         #Import fail modal
-      #         removeModal()
-      #         showModal(import_error_modal())
-      #       }
-      #     })
-      #   }
-      #   else{
-      #     showModal(no_data_error_modal())
-      #   }
-      #   
-      #   
-      # })
-      
       # CSV import ----
       
       #Import csv file
@@ -538,46 +442,27 @@ dipsImportServer <- function(id,login,tables) {
           future_promise({
             con0 <- fenDb0(user,password)
             
-            # Construct query
-            
-            q0 <- paste0("INSERT INTO hydro_monitoring.dips_imports (source_type,source,notes) VALUES (",
-                         2,",",
-                         null_text_val(con0,input$choose_csv),",",
-                         null_text_val(con0,input$import_notes_csv),
-                         ") RETURNING id")
-            q1 <- paste0("WITH imp AS (",q0,") \n ",
-                         "INSERT INTO hydro_monitoring.dips (install,dip_date_time,dip_measurer,dip_depth_top,dip_notes,dip_null,dips_import) VALUES "
-            )
-            
-            ## Construct dips values string
-            Q <- NULL
-            for(i in 1:nrow(import$data)){
-              d <- import$data[i,]
-              Q <- c(Q,
-                     paste0("(",
-                            d$install,",",
-                            null_timestamp_val(d$dip_date_time),",",
-                            null_text_val(con0,d$dip_measurer),",",
-                            null_num_val(d$dip_depth_top),",",
-                            null_text_val(con0,d$dip_notes),",",
-                            null_num_val(d$dip_null),
-                            ",(SELECT id FROM imp))"
-                     )
-              )
-            }
-            
-            q2 <- paste0(q1,paste(Q,collapse = ", \n ")," RETURNING (SELECT id FROM imp)")
-            
-            r <- dbGetQuery(con0,q2)
+            r <- import_table(con0,
+                         "hydro_monitoring",
+                         "dips",
+                         2,
+                         postgresqlEscapeStrings(con0,input$choose_csv),
+                         postgresqlEscapeStrings(con0,input$import_notes_csv),
+                         FALSE,
+                         FALSE,
+                         import$data,
+                         NULL,
+                         NULL,
+                         NULL)
             
             dbDisconnect(con0)
             return(r)
           })%...>%(function(r){
-            if(isTruthy(r)){
+            if(isTruthy(r$error)){
+              showModal(import_error_modal())
+            }else{
               removeModal()
               showModal(import_success_modal())
-            }else{
-              showModal(import_error_modal())
             }
           })
         }
@@ -586,105 +471,18 @@ dipsImportServer <- function(id,login,tables) {
         if(import$agol == 1 && import$csv == 0){
           future_promise({
             con0 <- fenDb0(user,password)
-            
-            # Construct query
-            
-            ## Construct dips import string
-            q0 <- paste0("INSERT INTO hydro_monitoring.dips_imports (source_type,source,notes,source_attachments) VALUES (",
-                         1,",",
-                         null_text_val(con0,input$agol_url),",",
-                         null_text_val(con0,input$import_notes_csv),",",
-                         input$import_attachments,
-                         ") RETURNING id")
-            
-            ## Construct dips values string
-            Q1 <- NULL
-            for(i in 1:nrow(import$data)){
-              d <- import$data[i,]
-              Q1 <- c(Q1,
-                     paste0("(",
-                            d$install,",",
-                            null_timestamp_val(d$dip_date_time),",",
-                            null_text_val(con0,d$dip_measurer),",",
-                            null_num_val(d$dip_depth_top),",",
-                            null_text_val(con0,d$dip_notes),",",
-                            null_num_val(d$dip_null),
-                            ",(SELECT id FROM imp),'",
-                            d$guid,"')"
-                     )
-              )
-            }
-            
-            if(input$import_attachments == TRUE && isTruthy(import$attach) && nrow(import$attach) > 0){
-              
-              q2 <- "INSERT INTO hydro_monitoring.dips_attach (guid,rel_guid,att_type,att_name,att_size,att) VALUES \n"
-              f <- 500 # Max file size in kB
-              d <- 2000 # Resize image max dim in px
-              
-              Q2 <- NULL
-              for(i in 1:nrow(import$attach)){
-                
-                # Download attachments and convert to binary
-                if(import$attach[i,c("att_type")] == "image/jpeg"){
-                  tf <- tempfile(fileext=".jpeg")
-                  download.file(import$attach[i,c("url")], tf, mode = "wb")
-                  
-                  # Compress images
-                  if(import$attach[i,c("att_size")] > f * 1000){
-                    img <- magick::image_read(tf)
-                    
-                    g <- magick::geometry_size_pixels(width = d, height = d, preserve_aspect = TRUE)
-                    image_write(image_resize(img,geometry =g),tf,quality=20, compression = "JPEG")
-                    import$attach[i,c("att_size")] <- image_info(image_read(tf))$filesize
-                  }
-                  
-                  z <- readRaw(tf)
-                  import$attach[i,c("att")] <- paste0("\\x", paste(z$fileRaw, collapse = ""))
-                  
-                  # construct attachment values string
-                  Q2 <- c(Q2,
-                          paste0("('",
-                                 import$attach[i,c("guid")],
-                                 
-                                 "', (SELECT guid FROM dips WHERE guid = '",import$attach[i,c("rel_guid")],"'),'",
-                                 
-                                 # "','", import$attach[i,c("rel_guid")],"','",
-                                 
-                                 import$attach[i,c("att_type")],"','",
-                                 import$attach[i,c("att_name")],"',",
-                                 import$attach[i,c("att_size")],",'",
-                                 import$attach[i,c("att")] ,"')")
-                          )
-                  }
-                }
-              
-              # construct final query string
-              q3 <- paste0(
-                "WITH imp AS (",q0,"), \n",
-                "dips AS (
-                    INSERT INTO hydro_monitoring.dips (install,dip_date_time,dip_measurer,dip_depth_top,dip_notes,dip_null,dips_import,guid) VALUES \n "
-                    , paste(Q1,collapse = ", \n "),
-                " ON CONFLICT (guid) DO NOTHING \n 
-                 RETURNING guid",
-                ") \n ",
-                q2, 
-                paste(Q2,collapse = ", \n "),
-                " \n ON CONFLICT (guid) DO NOTHING"
-                )
-              
-              
-            }else{
-              # construct final query string
-              q1 <- paste0("WITH imp AS (",q0,") \n ",
-                           "INSERT INTO hydro_monitoring.dips (install,dip_date_time,dip_measurer,dip_depth_top,dip_notes,dip_null,dips_import) VALUES "
-                           )
-              q3 <- paste0(q1,paste(Q1,collapse = ", \n "),
-                           "ON CONFLICT (guid) DO NOTHING \n 
-                            RETURNING (SELECT id FROM imp);")
-            }
-            
-            r <- dbGetQuery(con0,q3)
-            
+            r <- import_table(con0,
+                              "hydro_monitoring",
+                              "dips",
+                              1,
+                              postgresqlEscapeStrings(con0,input$agol_url),
+                              postgresqlEscapeStrings(con0,input$import_notes_agol),
+                              FALSE,
+                              input$import_attachments,
+                              import$data,
+                              import$attach,
+                              500,
+                              2000)
             dbDisconnect(con0)
             return(r)
           })%...>%(function(r){
