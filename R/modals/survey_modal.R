@@ -11,13 +11,25 @@ survey_modal_dialog <- function(session, d, mode, qual) {
       x <- "Edit data source"
     }
   }
+  
+  status <- c("open","closed")
+  names(status) <- c("Open","Closed")
 
   shiny::modalDialog(
     title = x,
     fluidRow(
       tagList(
       column(12,
-             column(6,
+             selectizeInput(
+               inputId = ns(paste0("status",qual)),
+               label= "Status:",
+               choices = status,
+               selected = d[17]
+               )
+             ),
+
+      column(12,
+        column(6,
             textInput(
               inputId = ns(paste0("survey",qual)),
               label = "Name:",

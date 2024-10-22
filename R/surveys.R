@@ -14,13 +14,10 @@ surveyUI <- function(id){
                     tags$li("Data obtained from third parties, such as biological records centres."),
                     tags$li("Data digitised from books, journals etc.")
                   ),
-                  p("The table shows all data source records in the Fen Database. If your login has permission,
-                    then you can edit existing data sources and add new ones.")
-                  # ,
-                  # tags$figure(
-                  #   img(src='EMO.jpg', style = "width:100%; border: solid 1px black; border-radius: 5px"), 
-                  #   tags$figcaption("Early Marsh-orchid, Lye Valley, Oxford. Tonie Gillie.")
-                  #   )
+                  p("The table shows all data source records in the database. If your login has permission,
+                    then you can edit existing data sources and add new ones."),
+                  p("Open data sources, for which new associated records can be added, are highlighted in green. Closed data sources are greyed out.")
+                  
                   
                   
                   ),
@@ -106,28 +103,45 @@ surveyServer <- function(id, login, tables) {
       
       output$surveysTable <- DT::renderDataTable(
         {
-          x <- data.frame(survey = character(), range = character(), project = character(), survey_type_description = character(),Buttons = character())
-          x
-        },
-        escape = F,
-        rownames = FALSE,
-        selection = 'single',
-        filter = list(position='top'),
-        colnames = c("Data source name", "Year(s)","Project", "Data source type",""),
-        options = list(
-          processing = FALSE,
-          dom = 'tpli',
-          language = list(zeroRecords = "No data sources"),
-           columnDefs = list(
-             list(className = "dt-center", targets = c(1)),
-             list(orderable = FALSE, targets = c(4)),
-             list(targets = c(4),searchable = FALSE),
-             list(width = '60px',targets=c(4))
-           ),
-           extensions = c("FixedHeader", "Scroller"),
-           fixedHeader = TRUE,
-           scrollY = "400"
-        )
+          x <- data.frame(survey = character(), range = character(), project = character(), survey_type_description = character(),status = character(),Buttons = character())
+          DT::datatable(
+            x
+            ,
+            escape = F,
+            rownames = FALSE,
+            selection = 'single',
+            filter = list(position='top'),
+            colnames = c("Data source name", "Year(s)","Project", "Data source type","Status",""),
+            options = list(
+              processing = FALSE,
+              dom = 'tpliB',
+              lengthMenu = list(c(50, 100, -1), c('50', '100', 'All')),
+              pageLength = 50,
+              buttons = list(
+                list(
+                  extend = "collection",
+                  text = 'Show All',
+                  action = DT::JS("function ( e, dt, node, config ) {
+                                    dt.page.len(-1);
+                                    dt.ajax.reload();
+                                }")
+                )
+              ),
+              language = list(zeroRecords = "No data sources"),
+              columnDefs = list(
+                list(className = "dt-center", targets = c(1)),
+                list(orderable = FALSE, targets = c(ncol(x)-1)),
+                list(targets = c(ncol(x)-1),searchable = FALSE),
+                list(width = '60px',targets=c(ncol(x)-1))
+              ),
+              extensions = c("FixedHeader", "Scroller","Buttons"),
+              fixedHeader = TRUE,
+              scrollY = "400"
+              )  
+            ) %>% 
+            formatStyle("status",target='row',backgroundColor = styleEqual("open","rgb(128, 255, 0,0.3)")) %>% 
+            formatStyle("status",target='row',backgroundColor = styleEqual("closed","rgb(160, 160, 160,0.3)"))
+          }
       )
       
       proxy <- DT::dataTableProxy("surveysTable")
@@ -139,7 +153,7 @@ surveyServer <- function(id, login, tables) {
         x$year_0 <- pmin(year(x$start_date),x$start_year,na.rm=T)
         x$year_1 <- pmax(year(x$end_date),x$end_year,na.rm=T)
         x$range <- apply(x[,c("year_0","year_1")],1,year_range)
-        d <- x[,c("survey","range","project","survey_type_description","Buttons")]
+        d <- x[,c("survey","range","project","survey_type_description","status","Buttons")]
         
         proxy %>% 
           DT::replaceData(data = d, resetPaging = FALSE, rownames = FALSE) %>%
@@ -160,7 +174,7 @@ surveyServer <- function(id, login, tables) {
         if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "surveys_edit")){      
           rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
           id <- rv$df[rv$dt_row, c("id")]
-          d <- rv$df[rv$dt_row,c(2:17)]
+          d <- rv$df[rv$dt_row,c(2:18)]
           survey_modal_dialog(session, d, mode = "edit", qual = "")
           
           choices_p <- rv$p$id
@@ -175,18 +189,66 @@ surveyServer <- function(id, login, tables) {
           shinyjs::disable("last_edited_user")
           shinyjs::disable("last_edited_date")
           
-          shinyjs::enable("survey")
-          shinyjs::enable("survey_type")
-          shinyjs::enable("start_date")
-          shinyjs::enable("end_date")
-          shinyjs::enable("start_year")
-          shinyjs::enable("end_year")
-          shinyjs::enable("source")
-          shinyjs::enable("project")
-          shinyjs::enable("sharing")
-          shinyjs::enable("copyright")
-          shinyjs::enable("description")
-          shinyjs::enable("url")
+          shinyjs::enable("status")
+          
+          if(d[17] == "open"){
+            shinyjs::enable("survey")
+            shinyjs::enable("survey_type")
+            shinyjs::enable("start_date")
+            shinyjs::enable("end_date")
+            shinyjs::enable("start_year")
+            shinyjs::enable("end_year")
+            shinyjs::enable("source")
+            shinyjs::enable("project")
+            shinyjs::enable("sharing")
+            shinyjs::enable("copyright")
+            shinyjs::enable("description")
+            shinyjs::enable("url")
+          }else{
+            shinyjs::disable("survey")
+            shinyjs::disable("survey_type")
+            shinyjs::disable("start_date")
+            shinyjs::disable("end_date")
+            shinyjs::disable("start_year")
+            shinyjs::disable("end_year")
+            shinyjs::disable("source")
+            shinyjs::disable("project")
+            shinyjs::disable("sharing")
+            shinyjs::disable("copyright")
+            shinyjs::disable("description")
+            shinyjs::disable("url")
+          }
+
+          observeEvent(input$status,{
+            if(input$status == "open"){
+              shinyjs::enable("survey")
+              shinyjs::enable("survey_type")
+              shinyjs::enable("start_date")
+              shinyjs::enable("end_date")
+              shinyjs::enable("start_year")
+              shinyjs::enable("end_year")
+              shinyjs::enable("source")
+              shinyjs::enable("project")
+              shinyjs::enable("sharing")
+              shinyjs::enable("copyright")
+              shinyjs::enable("description")
+              shinyjs::enable("url")
+            }else{
+              shinyjs::disable("survey")
+              shinyjs::disable("survey_type")
+              shinyjs::disable("start_date")
+              shinyjs::disable("end_date")
+              shinyjs::disable("start_year")
+              shinyjs::disable("end_year")
+              shinyjs::disable("source")
+              shinyjs::disable("project")
+              shinyjs::disable("sharing")
+              shinyjs::disable("copyright")
+              shinyjs::disable("description")
+              shinyjs::disable("url")
+            }
+          })
+          
           
           # Modal validation
           iv <- InputValidator$new()
@@ -222,7 +284,7 @@ surveyServer <- function(id, login, tables) {
       if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "surveys_info")){
         rv$dt_row <- which(stringr::str_detect(rv$df$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
         mode("info")
-        d <- rv$df[rv$dt_row,c(2:17)]
+        d <- rv$df[rv$dt_row,c(2:18)]
         survey_modal_dialog(session, d, mode = NULL, qual = "")
         
         choices_p <- rv$p$id
@@ -236,6 +298,8 @@ surveyServer <- function(id, login, tables) {
         shinyjs::disable("created_date")
         shinyjs::disable("last_edited_user")
         shinyjs::disable("last_edited_date")
+        
+        shinyjs::disable("status")
         
         shinyjs::disable("survey")
         shinyjs::disable("survey_type")
@@ -273,6 +337,9 @@ surveyServer <- function(id, login, tables) {
         shinyjs::hide("created_date")
         shinyjs::hide("last_edited_user")
         shinyjs::hide("last_edited_date")
+        
+        updateSelectizeInput(session, "status", selected = "open")
+        shinyjs::disable("status")
         
         shinyjs::enable("survey")
         shinyjs::enable("survey_type")
@@ -336,18 +403,19 @@ surveyServer <- function(id, login, tables) {
             con0 <- fenDb0(user,password)
             update <- dbGetQuery(con0, paste0(
               "UPDATE records.surveys SET
-            survey = '", input$survey ,"',
+            survey = ", null_text_val(con0,input$survey) ,",
             survey_type = ", input$survey_type,",",
               "start_date = ", null_date_val(input$start_date),",",
               "end_date = ", null_date_val(input$end_date),",",
               "start_year = ", null_num_val(input$start_year),",",
               "end_year = ", null_num_val(input$end_year),",",
-              "source = " , null_text_val(con, input$source),",",
+              "source = " , null_text_val(con0, input$source),",",
               "project = ", input$project,",",
               "sharing = ", input$sharing,",",
-              "copyright = ", null_text_val(con, input$copyright),",",
-              "description = ", null_text_val(con, input$description),",", #NEED TO ESCAPE CHARACTERS
-              "url = ", null_text_val(con, input$url),
+              "copyright = ", null_text_val(con0, input$copyright),",",
+              "description = ", null_text_val(con0, input$description),",", 
+              "url = ", null_text_val(con0, input$url),",",
+              "status = ", null_text_val(con0,input$status),
               " WHERE id = ", id, " RETURNING last_edited_user, last_edited_date"
             ))
             dbDisconnect(con0)
@@ -371,11 +439,11 @@ surveyServer <- function(id, login, tables) {
               result$last_edited_user,
               as.Date(input$created_date),
               as.Date(result$last_edited_date),
+              input$status,
               st[st$code == as.numeric(input$survey_type),c("description")],
               sh[sh$code == as.numeric(input$sharing),c("description")],
               rv$p[rv$p$id == as.numeric(input$project),c("project")]
             )
-            #rv$df[rv$df$id == id,c(1:length(row))] <- row
             tables$surveys[tables$surveys$id == id,] <- row
           })
         }
@@ -386,7 +454,7 @@ surveyServer <- function(id, login, tables) {
             con0 <- fenDb0(user,password)
             q <- paste0(
               "INSERT INTO records.surveys
-            (survey, survey_type,start_date,end_date,start_year,end_year,source,project,sharing,copyright,description,url)
+            (survey, survey_type,start_date,end_date,start_year,end_year,source,project,sharing,copyright,description,url,status)
             VALUES
             ('",
               input$survey ,"',",
@@ -400,7 +468,8 @@ surveyServer <- function(id, login, tables) {
               input$sharing,",",
               null_text_val(con0, input$copyright),",",
               null_text_val(con0, input$description),",",
-              null_text_val(con0, input$url)
+              null_text_val(con0, input$url),",",
+              null_text_val(con0, input$status)
               ,") RETURNING id, created_user, created_date"
             )
             r <- dbGetQuery(con0,q)
@@ -425,6 +494,7 @@ surveyServer <- function(id, login, tables) {
               NA,
               as.Date(result$created_date),
               NA,
+              input$status,
               st[st$code == as.numeric(input$survey_type),c("description")],
               sh[sh$code == as.numeric(input$sharing),c("description")],
               rv$p[rv$p$id == as.numeric(input$project),c("project")]
@@ -435,7 +505,6 @@ surveyServer <- function(id, login, tables) {
             }else{
               b <- create_btns_r(c(as.numeric(result$id)),"surveys")
             }
-            #rv$df[nrow(rv$df)+1,] <- c(row,b)
             tables$surveys[nrow(tables$surveys)+1,] <- row
           })
         }
