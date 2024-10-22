@@ -807,6 +807,7 @@ null_val <- function(con,y){
   }
 }
 
+
 import_table <- function(con,
                          schema,
                          table,
@@ -819,6 +820,7 @@ import_table <- function(con,
                          attach,
                          f,
                          sz){
+
   r <- list("error"=NULL,"output"=NULL)
   
   if(nrow(data) == 0 || !isTruthy(data)){
