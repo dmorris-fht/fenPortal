@@ -602,7 +602,7 @@ val_btns <- function(x,n){
                          ))
 }
 
-# AGOL integration functions ----
+# AGOL fetch function ----
 
 fetch_agol <- function( url, where, geometry, attachments){
   
@@ -678,7 +678,7 @@ fetch_agol <- function( url, where, geometry, attachments){
   dates <- grep("Date",d$fields$type)
   x[dates] <- lapply(x[dates],date_correction) # correct dates to postgres format
   
-  x$guid <- as.UUID(x$GlobalID)
+  x$guid <- x$GlobalID #as.UUID(x$GlobalID)
   x <- x[,-which(colnames(x)== "OBJECTID" | colnames(x) == "GlobalID")] #Drop AGOL id fields
   
   tracking <- which(colnames(x) == "last_edited_user" | colnames(x) == "last_edited_date" | colnames(x) == "created_user" | colnames(x) == "created_date")
@@ -785,6 +785,185 @@ fetch_agol <- function( url, where, geometry, attachments){
   r$attach <- attach
   return(r)
 }
+
+# Import to table function ----
+
+null_val <- function(con,y){
+  x <- trimws(y)
+  if(!isTruthy(x)){
+    return('NULL')
+  }
+  if(is.POSIXct(x)){
+    return(null_timestamp_val(x))
+  }
+  if(is.UUID(x)){
+    return(paste0("'",as.UUID(x),"'"))
+  }
+  if(is.numeric(x)){
+    return(null_num_val(x))
+  }
+  if(is.character(x)){
+    return(null_text_val(con,x))
+  }
+}
+
+import_table <- function(con,
+                         schema,
+                         table,
+                         import_type,
+                         import_source,
+                         import_notes,
+                         import_geometry,
+                         import_attach,
+                         data,
+                         attach,
+                         f,
+                         sz){
+  r <- list("error"=NULL,"output"=NULL)
+  
+  if(nrow(data) == 0 || !isTruthy(data)){
+    r$error <- "No data to import"
+    print(r$error)
+    return(r)
+  }
+  
+  # Get matching columns in target table
+  q_col <- paste0("SELECT column_name FROM information_schema.columns WHERE table_schema = '",schema,"' AND table_name  = '",table,"'")
+  cols <- dbGetQuery(con,q_col)
+  import_cols <- colnames(data)[which(colnames(data) %in% unlist(cols))]
+  
+  if(sum(colnames(data) %in% unlist(cols)) == 0){
+    r$error <- "No columns match"
+    print(r$error)
+    return(r)
+  }
+  
+  if("guid" %in% colnames(data)){
+    # Skip existing rows in target table
+    guid <- dbGetQuery(con,paste0("SELECT guid::varchar FROM ",schema,".",table," WHERE guid IN ",con_sql_string(data$guid)))
+      if(isTruthy(guid) & nrow(guid) > 0 ){
+        data <- data[which(!(as.character(data$guid) %in% guid$guid)),]
+        if(import_attach){
+          print(attach)
+          print(!(as.character(attach$rel_guid) %in% guid$guid))
+          attach <- attach[which(!(as.character(attach$rel_guid) %in% guid$guid)),]
+        }
+      }
+  }
+
+  # Import insert string
+  q0 <- paste0("INSERT INTO records.imports (source_type,source,notes,source_attachments,schema,table_name) VALUES (",
+               import_type,",",
+               null_text_val(con,import_source),",",
+               null_text_val(con,import_notes),",",
+               import_attach,",",
+               paste0("'",schema,"'"),",",
+               paste0("'",table,"'"),
+               ") RETURNING id")
+  
+  # Handle geometry column
+  if(import_geometry){
+    # If importing geometry, move geom column to beginning
+    geom_ind <- which(import_cols == "geom")
+    import_cols <- c("geom",import_cols[-c(geom_ind)])
+  }else{
+    # Remove geom column if in dataframe for import
+    if("geom" %in% import_cols){
+      import_cols <- import_cols[-which(import_cols == "geom")]
+    }
+  }
+  
+  # Target table insert string - 1st chunk
+  q1 <- paste0("WITH imp AS (",q0,") \n ",
+               "INSERT INTO ",schema,".",table," (",paste(import_cols,collapse = ","),",import) VALUES \n "
+               )
+  
+  # Target table insert string 2nd chunk - case 1
+  if(!import_geometry){
+    data$Q <- apply(data[,import_cols],1,function(d){
+      paste0("(",
+             paste(lapply(d,function(x){null_val(con,x)}),collapse=","),
+             ",(SELECT id FROM imp))"
+      )
+    })
+  }
+  
+  # Target table insert string 2nd chunk - case 2
+  if(import_geometry){
+    data$Q <- 
+      paste(
+        paste("(",
+               "ST_GeomFromText('", data$geom, "',27700),",sep=""),
+        apply(data[import_cols[2:length(import_cols)]],1,function(d){
+                   paste(lapply(d,function(x){
+                     null_val(con,x)
+                   }),collapse=",")
+                 }),
+        ",(SELECT id FROM imp))"
+               )
+      }
+  
+  Q <- paste(data$Q,collapse = ", \n ")
+  
+  if(import_attach & isTruthy(attach)){
+    
+    q_att <- paste0("INSERT INTO ",schema,".",table,"_attach (guid,rel_guid,att_type,att_name,att_size,att) VALUES \n")
+
+    Q_att <- NULL
+    for(i in 1:nrow(attach)){
+      
+      # Download attachments and convert to binary
+      if(attach[i,c("att_type")] == "image/jpeg"){
+        tf <- tempfile(fileext=".jpeg")
+        download.file(attach[i,c("url")], tf, mode = "wb")
+        
+        # Compress images
+        if(attach[i,c("att_size")] > f * 1000){
+          img <- magick::image_read(tf)
+          
+          g <- magick::geometry_size_pixels(width = sz, height = sz, preserve_aspect = TRUE)
+          image_write(image_resize(img,geometry =g),tf,quality=20, compression = "JPEG")
+          attach[i,c("att_size")] <- image_info(image_read(tf))$filesize
+        }
+        
+        z <- readRaw(tf)
+        attach[i,c("att")] <- paste0("\\x", paste(z$fileRaw, collapse = ""))
+        
+        # construct attachment values string
+        Q_att <- c(Q_att,
+                paste0("('",
+                       attach[i,c("guid")],
+                       
+                       "', (SELECT guid FROM tab WHERE guid = '",attach[i,c("rel_guid")],"'),'",
+                       attach[i,c("att_type")],"','",
+                       attach[i,c("att_name")],"',",
+                       attach[i,c("att_size")],",'",
+                       attach[i,c("att")] ,"')")
+        )
+      }
+    }
+    
+    # Final query string for import with attachments
+    q3 <- paste0(
+      "WITH imp AS (",q0,"), \n",
+      "tab AS (
+                    INSERT INTO ",schema,".",table," (",paste(import_cols,collapse = ","),",import) VALUES \n "
+      , Q,
+      " ON CONFLICT (guid) DO NOTHING \n 
+                 RETURNING guid",
+      ") \n ",
+      q_att, 
+      paste(Q_att,collapse = ", \n "),
+      " \n ON CONFLICT (guid) DO NOTHING"
+    )
+  }else{
+    q3 <- paste0(q1,paste(Q,collapse = ", \n "),
+                 " RETURNING (SELECT id FROM imp);")
+  }
+      
+      r$output <- dbGetQuery(con,q3)
+      return(r)
+    }
 
 import_agol <- function(con, 
                         u, # service url
@@ -951,6 +1130,7 @@ app_tables <- function(tables,t){
                             s.last_edited_user,
                             s.created_date,
                             s.last_edited_date,
+                            s.status,
                             st.description AS survey_type_description,
                             sh.description AS sharing,
                             p.project AS project
