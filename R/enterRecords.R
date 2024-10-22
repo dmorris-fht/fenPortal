@@ -545,8 +545,9 @@ enterRecordsServer <- function(id, login, tables) {
       
       choices_survey <- reactive({
         if(isTruthy(tables$surveys)){
-          c <- tables$surveys$id
-          names(c) <- tables$surveys$survey
+          open <- tables$surveys[tables$surveys$status == "open",]
+          c <- open$id
+          names(c) <- open$survey
         }
         else{
           c <- c("")
