@@ -813,7 +813,7 @@ enterRecordsServer <- function(id, login, tables) {
         data = global_records[global_records$user == user,]
       )
       
-      #Data table definition ----
+      # Data table definition ----
 
       output$recordsTable <- DT::renderDT(
         {
@@ -925,7 +925,7 @@ enterRecordsServer <- function(id, login, tables) {
         if(d$mode == "new"){
           # Add form values to reactive. 
           # UUID generated in app so that records can be edited post-upload.
-          #a <- nrow(d$data)+1
+          
           if(nrow(d$data) > 0){
             a <- max(d$data$id) + 1
           }else{
@@ -1174,7 +1174,7 @@ enterRecordsServer <- function(id, login, tables) {
       
       observeEvent(input$delete_all_records_yes,{
         d$data <- d$data[0,]
-        
+        d$mode <- "new"
         removeModal()
       })
 
