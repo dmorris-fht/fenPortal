@@ -631,6 +631,7 @@ enterRecordsServer <- function(id, login, tables) {
       observeEvent(input$subsite_check,{
         if(input$subsite_check == 0){
           shinyjs::enable('subsite')
+          shinyjs::enable("new_subsite")
         }
         if(input$subsite_check == 1){
           shinyjs::disable('subsite')
