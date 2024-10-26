@@ -34,7 +34,8 @@ function(input, output, session) {
     dataSharing = 0,
     installsManage = 0,
     loggersManage = 0,
-    dipsImport = 0
+    dipsImport = 0,
+    stratImport = 0
     )
   
   #Login----
@@ -100,6 +101,9 @@ function(input, output, session) {
         if(input$menu == "dipsImport"){
           n$dipsImport <- n$dipsImport + 1
         }
+        if(input$menu == "stratImport"){
+          n$stratImport <- n$stratImport + 1
+        }
       })
    
       # Initialise fen map module ----
@@ -135,6 +139,8 @@ function(input, output, session) {
         runjs(
           "$('ul[data-value=\\'enterRecords\\']').closest('li').hide();
             $('ul[data-value=\\'importRecords\\']').closest('li').hide();
+            $('ul[data-value=\\'dipsImport\\']').closest('li').hide();
+            $('ul[data-value=\\'stratImport\\']').closest('li').hide();
           "
           
           )
@@ -143,7 +149,7 @@ function(input, output, session) {
       # Initialise enterRecords  ----
       observe({
           if(n$enterRecords == 1){
-            enterRecordsServer("enterRecords", login, tables)
+            enterRecordsServer("enterRecords", login, tables, input$menu)
           }
       })
   
@@ -157,7 +163,7 @@ function(input, output, session) {
       # Initialise vegManage  ----
       observe({
         if(n$vegManage == 1){
-          vegManageServer("vegManage", login, tables)
+          vegManageServer("vegManage", login, tables, input$menu)
         }
       })
       
@@ -221,6 +227,13 @@ function(input, output, session) {
       observe({
         if(n$dipsImport == 1 && (login$role == "cru" || login$role == "cr")){
           dipsImportServer("dipsImport",login,tables)
+        }
+      })
+      
+      # Initialise dipsImport ----
+      observe({
+        if(n$stratImport == 1 && (login$role == "cru" || login$role == "cr")){
+          stratImportServer("stratImport",login,tables)
         }
       })
       

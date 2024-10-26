@@ -29,7 +29,7 @@ dashboardPage(
       menuItem("FenMap", tabName = "spatial", icon = icon("map")),
       
       div(h4("Data management"),style="margin-left:10px"),
-        menuItem("Sites & subsites", tabName  = "sites", icon = icon("compass")),
+        menuItem("Sites", tabName  = "sites", icon = icon("compass")),
         menuItem("Data sources", tabName  = "surveys", icon = icon("database")),
       
       div(h4("Biological data & monitoring"),style="margin-left:10px"),
@@ -190,6 +190,12 @@ dashboardPage(
                   dipsImportUI("dipsImport")
                 )
               )
+      ,
+      tabItem(tabName = "stratImport",
+              fluidRow(
+                stratImportUI("stratImport")
+              )
+      )
       # ,
       # tabItem(tabName = "loggersImport",
       #           fluidRow(
