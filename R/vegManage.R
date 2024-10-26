@@ -336,8 +336,12 @@ vegManageServer <- function(id, login, tables, tab) {
       
       observe({
         req(rv$df_d)
-        req(rv$v)
-        x <- rv$df_d[rv$df_d$plot_reference_visit == rv$v,c("taxon_name","abundance","Buttons")]
+        if(isTruthy(rv$v)){
+          x <- rv$df_d[rv$df_d$plot_reference_visit == rv$v,c("taxon_name","abundance","Buttons")]
+        }else{
+          x <- rv$df_d[0,c("taxon_name","abundance","Buttons")]
+        }
+        
         proxy_DT_d %>%
           DT::replaceData(data = x, resetPaging = FALSE, rownames = FALSE) %>%
           updateFilters(data = x)
@@ -427,6 +431,7 @@ vegManageServer <- function(id, login, tables, tab) {
         if(isTruthy(input$visitsTable_rows_selected)){
           rv$i <- 0
         }else{
+          rv$v <- NULL
           rv$i <- NULL
         }
 
@@ -500,7 +505,7 @@ vegManageServer <- function(id, login, tables, tab) {
         
         # Remove any rows that have blank species entries
         rv$df_d <- rv$df_d[which(
-          !is.na(rv$df_df$taxon_nbn) & (!is.na(rv$df_df$abundance_domin) | !is.na(rv$df_df$abundance_cover) | !is.na(rv$df_df$abundance_freq) | !is.na(rv$df_df$abundance_pres))
+          !is.na(rv$df_d$taxon_nbn) & (!is.na(rv$df_d$abundance_domin) | !is.na(rv$df_d$abundance_cover) | !is.na(rv$df_d$abundance_freq) | !is.na(rv$df_d$abundance_pres))
           ),]
       })
       
