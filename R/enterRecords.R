@@ -459,7 +459,7 @@ enterRecordsUI <- function(id){
   )
 }
 
-enterRecordsServer <- function(id, login, tables) {
+enterRecordsServer <- function(id, login, tables, tab) {
   moduleServer(
     id,
     function(input, output, session) {
@@ -490,6 +490,26 @@ enterRecordsServer <- function(id, login, tables) {
                  $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
           )
         )
+      })
+      
+      # Keyboard shortcut for add record
+      
+      observe({
+        if(tab == "enterRecords"){
+          runjs(
+            '
+              var down = {};
+              $(document).keydown(function(e) {
+                  down[e.keyCode] = true;
+              }).keyup(function(e) {
+                  if (down[18] && down[65]) {
+                    $("#enterRecords-add_record").click()
+                      }
+                      down[e.keyCode] = false;
+                });
+            '
+          )
+        }
       })
       
       #Load modals
@@ -1430,17 +1450,17 @@ enterRecordsServer <- function(id, login, tables) {
         shinyjs::enable("url_0")
         
         # Modal validation
-        iv <- InputValidator$new()
-        iv$add_rule("survey_0",function(value){
+        iv2 <- InputValidator$new()
+        iv2$add_rule("survey_0",function(value){
           if(isTruthy(input$survey_0) && input$survey_0 %in% tables$surveys[,c("survey")]){
             return("Data source already exists")
           }
         })
-        iv$add_rule("survey_0",sv_required())
-        iv$add_rule("survey_type_0",sv_required())
-        iv$add_rule("project_0",sv_required())
-        iv$add_rule("sharing_0",sv_required())
-        iv$enable()
+        iv2$add_rule("survey_0",sv_required())
+        iv2$add_rule("survey_type_0",sv_required())
+        iv2$add_rule("project_0",sv_required())
+        iv2$add_rule("sharing_0",sv_required())
+        iv2$enable()
         
         shinyjs::disable("final_edit_0")
         
@@ -1581,7 +1601,7 @@ enterRecordsServer <- function(id, login, tables) {
           }
         })
         iv3$add_rule("project_new",sv_required())
-        iv$enable()
+        iv3$enable()
       })
       
       observe({
