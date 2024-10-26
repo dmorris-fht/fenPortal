@@ -1,6 +1,7 @@
 vegManageUI <- function(id){
   ns <- NS(id)
   tagList(
+    useShinyjs(),
     withSpinner(
       tagList(
         div(style="width:100%",
@@ -71,7 +72,7 @@ vegManageUI <- function(id){
     )
   }
 
-vegManageServer <- function(id, login, tables) {
+vegManageServer <- function(id, login, tables, tab) {
   moduleServer(
     id,
     function(input, output, session) {
@@ -83,7 +84,7 @@ vegManageServer <- function(id, login, tables) {
       isolate({
         app_tables(tables, c("sites","subsites","surveys","plots"))
 
-        uksi_load(c(2))
+        uksi_load(c(1,2,3))
       })
       
       observe({
@@ -130,8 +131,9 @@ vegManageServer <- function(id, login, tables) {
       
       choices_surveys <- reactive({
         req(tables$surveys)
-        c <- tables$surveys$id
-        names(c) <- tables$surveys$survey
+        x <- tables$surveys[tables$surveys$status == "open",]
+        c <- x$id
+        names(c) <- x$survey
         return(c)
       })
       
@@ -151,6 +153,29 @@ vegManageServer <- function(id, login, tables) {
       }
       
       source("./R/modals/veg_modal.R")
+      
+      # Keyboard shortcut for add species
+      
+      observe({
+        if(tab == "vegManage" && add_taxon_status() == 1){
+          runjs(
+            '
+              var down = {};
+              $(document).keydown(function(e) {
+                  down[e.keyCode] = true;
+              }).keyup(function(e) {
+                  if (down[18] && down[65]) {
+                    $("#vegManage-add_taxon").click()
+                      }
+                      down[e.keyCode] = false;
+                });
+            '
+          )
+        }
+      })
+      
+      # Reactive for add_taxon button enabled / disabled 
+      add_taxon_status <- reactiveVal(0)
       
       # Reactive to hold data ----
       
@@ -186,7 +211,6 @@ vegManageServer <- function(id, login, tables) {
         add_or_edit = 0,
         edit_button = NULL
         )
-      
 
       observe({
           req(tables$plots)
@@ -398,9 +422,17 @@ vegManageServer <- function(id, login, tables) {
       
       
       # Visit select ----
-      observeEvent(input$visitsTable_rows_selected,{
+      observeEvent(input$visitsTable_rows_selected,ignoreNULL = FALSE,{
+        
+        if(isTruthy(input$visitsTable_rows_selected)){
+          rv$i <- 0
+        }else{
+          rv$i <- NULL
+        }
+
+        req(input$visitsTable_rows_selected)
         v <- rv$df_v[rv$df_v$plot_reference == rv$p,][input$visitsTable_rows_selected,c("plot_reference_visit")]
-        rv$i <- 0
+        
         q <- paste0("SELECT d.id, plot_reference_visit,
                       taxon_nbn,
                       abundance_domin, abundance_cover, abundance_presence::integer, abundance_frequency,
@@ -672,7 +704,7 @@ vegManageServer <- function(id, login, tables) {
                         SET
                           site = ",as.numeric(input$site),",
                           subsite = ",null_num_val(input$subsite),",
-                          group = ",null_text_val(con0,input$group),",
+                          \"group\" = ",null_text_val(con0,input$group),",
                           plot = ",null_text_val(con0,input$plot),",
                           gridref = ",null_text_val(con0,gsub(" ","",toupper(input$gridref))),",
                           transect_side = ",null_text_val(con0,input$transect_side),",
@@ -686,7 +718,7 @@ vegManageServer <- function(id, login, tables) {
                           ST_AsText(ST_TRANSFORM(geom, 4326)) AS geom,
                           site AS site,
                           subsite AS subsite,
-                          group,
+                          \"group\",
                           plot,
                           plot_reference,
                           gridref,
@@ -745,7 +777,7 @@ vegManageServer <- function(id, login, tables) {
           
           future_promise({
             con0 <- fenDb0(user,password)
-            q <- paste0("INSERT INTO spatial.monitoring_vegetation (site,subsite,group,plot,gridref,type,transect_side,dim,note)
+            q <- paste0("INSERT INTO spatial.monitoring_vegetation (site,subsite,\"group\",plot,gridref,type,transect_side,dim,note)
                         VALUES (",
                           as.numeric(input$site),",",
                           null_num_val(input$subsite),",",
@@ -761,7 +793,7 @@ vegManageServer <- function(id, login, tables) {
                           ST_AsText(ST_TRANSFORM(geom, 4326)) AS geom,
                           site AS site,
                           subsite AS subsite,
-                          group,
+                          \"group\",
                           plot,
                           plot_reference,
                           gridref,
@@ -771,30 +803,18 @@ vegManageServer <- function(id, login, tables) {
                           note,
                           created_user,
                           created_date")
-            r <- list(error = NA, data = NA, query = q)
-            tryCatch({
-              r0 <- postgresqlExecStatement(con0, q)
-              r1 <- postgresqlFetch(r0)
+              i <- dbGetQuery(con0, q)
               dbDisconnect(con0)
-              r$data <- r1
-            },
-            error=function(err){
-              dbDisconnect(con0)
-              r$error <- err
-            }
-            )
-            return(r)
-          })%...>%(function(r){
-            if(isTruthy(r$error)){
+            return(i)
+          })%...>%(function(i){
+            if(!isTruthy(i)){
               submitModal()
               output$submitMessage <- renderUI({
                 tagList(
-                  h4("An error occured"),
-                  p(r$error)
-                )
+                  h4("An error occured")
+                  )
               })
             }else{
-              i <- r$data
               i$last_edited_user <- NA
               i$last_edited_date <- NA
               i$site_name <- tables$sites[tables$sites$id == i$site, c("site")]
@@ -803,7 +823,6 @@ vegManageServer <- function(id, login, tables) {
               }else{
                 i$subsite_name <- NA
               }
-              
               row <- st_as_sf(i,wkt = "geom",crs=st_crs(4326))
               tables$plots <- rbind(tables$plots,row, deparse.level = 1)
               
@@ -845,6 +864,9 @@ vegManageServer <- function(id, login, tables) {
         rv$v_guid <- UUIDgenerate()
         
         visit_modal(session,rv$p,v,vd0,vd1 = NULL,d = NULL,edit = TRUE,choices_surveys())
+        
+        updateDateInput(session,"record_date_end",value = NA)
+        
         photoHandler()
         output$photo <- renderUI({p("No photo selected")})
         
@@ -1297,61 +1319,67 @@ vegManageServer <- function(id, login, tables) {
           })
 
           updateSelectizeInput(session,"taxon",choices = choices_uksi_plants,selected = t$taxon_nbn,server=TRUE)
+          
           iv_t <- InputValidator$new()
           iv_t$add_rule("taxon",sv_required())
-          iv_t$add_rule("abundance_domin",function(value){
-            if(!((isTruthy(input$domin) && input$domin > 0) || 
-                 (isTruthy(input$cover) && input$cover > 0) || 
-                 (isTruthy(input$freq) && input$freq > 0) || 
-                 (isTruthy(input$pres) && input$pres > 0))){
-              return('Add abundance')
+          
+          abundance <- reactive({
+              (isTruthy(input$domin) && input$domin > 0) || 
+              (isTruthy(input$cover) && input$cover > 0) || 
+              (isTruthy(input$freq) && input$freq > 0) || 
+              (isTruthy(input$pres) && input$pres > 0)
+            })
+          
+          iv_t$add_rule("domin",function(value){
+            if(
+              abundance() == FALSE
+              ){
+              return("Add abundance")
               }
             }
           )
-          iv_t$add_rule("abundance_cover",function(value){
-            if(!((isTruthy(input$domin) && input$domin > 0) || 
-                 (isTruthy(input$cover) && input$cover > 0) || 
-                 (isTruthy(input$freq) && input$freq > 0) || 
-                 (isTruthy(input$pres) && input$pres > 0))){
-              return('Add abundance')
+          iv_t$add_rule("cover",function(value){
+            if(
+              abundance() == FALSE
+            ){
+              return("Add abundance")
             }
           }
           )
-          iv_t$add_rule("abundance_freq",function(value){
-            if(!((isTruthy(input$domin) && input$domin > 0) || 
-                 (isTruthy(input$cover) && input$cover > 0) || 
-                 (isTruthy(input$freq) && input$freq > 0) || 
-                 (isTruthy(input$pres) && input$pres > 0))){
-              return('Add abundance')
+          iv_t$add_rule("freq",function(value){
+            if(
+              abundance() == FALSE
+            ){
+              return("Add abundance")
             }
           }
           )
-          iv_t$add_rule("abundance_pres",function(value){
-            if(!((isTruthy(input$domin) && input$domin > 0) || 
-                 (isTruthy(input$cover) && input$cover > 0) || 
-                 (isTruthy(input$freq) && input$freq > 0) || 
-                 (isTruthy(input$pres) && input$pres > 0))){
-              return('Add abundance')
+          iv_t$add_rule("pres",function(value){
+            if(
+              abundance() == FALSE
+            ){
+              return("Add abundance")
             }
           }
           )
-          iv_t$add_rule("abundance_domin",function(value){
-            if(value<1 || value > 10){
+          
+          iv_t$add_rule("domin",function(value){
+            if(isTruthy(input$domin) && (input$domin<1 || input$domin > 10)){
               return("1-10")
             }
           })
-          iv_t$add_rule("abundance_cover",function(value){
-            if(value<1 || value > 100){
+          iv_t$add_rule("cover",function(value){
+            if(isTruthy(input$cover) && (input$cover <1 || input$cover > 100)){
               return("1-100")
             }
           })
-          iv_t$add_rule("abundance_pres",function(value){
-            if(value != 1){
+          iv_t$add_rule("pres",function(value){
+            if(isTruthy(input$pres) && input$pres != 1){
               return("1 = present")
             }
           })
-          iv_t$add_rule("abundance_freq",function(value){
-            if(value<0.00001 || value > 1){
+          iv_t$add_rule("freq",function(value){
+            if(isTruthy(input$freq) && (input$freq <0.00001 || input$freq > 1)){
               return("0-1")
             }
           })
@@ -1366,17 +1394,20 @@ vegManageServer <- function(id, login, tables) {
       }
       
       ## DT row select
-      observeEvent(input$plotDataTable_rows_selected,{
+      observeEvent(input$plotDataTable_rows_selected,ignoreNULL = FALSE,{
         req(rv$v)
         req(rv$df_d)
-        req(input$plotDataTable_rows_selected)
-        d <- rv$df_d[rv$df_d$plot_reference_visit == rv$v,]
-        rv$i <- d[input$plotDataTable_rows_selected,c("id")]
+        if(isTruthy(input$plotDataTable_rows_selected)){
+          d <- rv$df_d[rv$df_d$plot_reference_visit == rv$v,]
+          rv$i <- d[input$plotDataTable_rows_selected,c("id")]
+        }else{
+          rv$i <- NULL
+        }
       })
       
       ## Populate species form
-      observeEvent(rv$i,{
-        if(rv$i > 0 ){
+      observeEvent(rv$i,ignoreNULL = FALSE,{
+        if(isTruthy(rv$i) && rv$i > 0 ){
           t <- rv$df_d[rv$df_d$id == rv$i,]
           taxonForm(session,1,t)
         }else{
@@ -1388,8 +1419,10 @@ vegManageServer <- function(id, login, tables) {
       observe({
         if(isTruthy(rv$v) & rv$sp_mode == 0){
           shinyjs::enable("add_taxon")
+          add_taxon_status(1)
         }else{
           shinyjs::disable("add_taxon")
+          add_taxon_status(0)
         }
       })
       
@@ -1446,7 +1479,7 @@ vegManageServer <- function(id, login, tables) {
       observeEvent(input$taxon,{
         req(rv$df_d)
         req(rv$i > 0)
-        #req(!compareNA(input$taxon , rv$df_d[rv$df_d$id == rv$i,c("taxon_nbn")]))
+        req(!compareNA(input$taxon , rv$df_d[rv$df_d$id == rv$i,c("taxon_nbn")]))
         rv$df_d[rv$df_d$id == rv$i,c("taxon_nbn")] <- input$taxon
         rv$df_d[rv$df_d$id == rv$i,c("taxon_name")] <- uksi_full[uksi_full$nbn_taxon_version_key == input$taxon,c("taxon_name")]
         if(is.na(rv$df_d[rv$df_d$id == rv$i,c("edit")])){
@@ -1458,17 +1491,25 @@ vegManageServer <- function(id, login, tables) {
         req(rv$i > 0)
         req(!compareNA(input$domin , rv$df_d[rv$df_d$id == rv$i,c("abundance_domin")]))
         rv$df_d[rv$df_d$id == rv$i,c("abundance_domin")] <- input$domin
-        rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+        
+        if(sum(sapply(c(input$domin,input$cover,input$freq,input$pres),isTruthy))>0){
+          rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+        }
+        
         if(is.na(rv$df_d[rv$df_d$id == rv$i,c("edit")])){
           rv$df_d[rv$df_d$id == rv$i,c("edit")] <- 1
-          }
+        }
         })
       observeEvent(input$cover,{
         req(rv$df_d)
         req(rv$i > 0)
         req(!compareNA(input$cover, rv$df_d[rv$df_d$id == rv$i,c("abundance_cover")]))
         rv$df_d[rv$df_d$id == rv$i,c("abundance_cover")] <- input$cover
-        rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+
+        if(sum(sapply(c(input$domin,input$cover,input$freq,input$pres),isTruthy))>0){
+          rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+        }
+        
         if(is.na(rv$df_d[rv$df_d$id == rv$i,c("edit")])){
           rv$df_d[rv$df_d$id == rv$i,c("edit")] <- 1
           }
@@ -1478,7 +1519,11 @@ vegManageServer <- function(id, login, tables) {
         req(rv$i > 0)
         req(!compareNA(input$freq, rv$df_d[rv$df_d$id == rv$i,c("abundance_frequency")]))
         rv$df_d[rv$df_d$id == rv$i,c("abundance_frequency")] <- input$freq
-        rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+
+        if(sum(sapply(c(input$domin,input$cover,input$freq,input$pres),isTruthy))>0){
+          rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+        }
+        
         if(is.na(rv$df_d[rv$df_d$id == rv$i,c("edit")])){
           rv$df_d[rv$df_d$id == rv$i,c("edit")] <- 1
           }
@@ -1488,7 +1533,11 @@ vegManageServer <- function(id, login, tables) {
         req(rv$i > 0)
         req(!compareNA(input$pres, rv$df_d[rv$df_d$id == rv$i,c("abundance_presence")]))
         rv$df_d[rv$df_d$id == rv$i,c("abundance_presence")] <- input$pres
-        rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+        
+        if(sum(sapply(c(input$domin,input$cover,input$freq,input$pres),isTruthy))>0){
+          rv$df_d[rv$df_d$id == rv$i,c("abundance")] <- coalesce.list(rv$df_d[rv$df_d$id == rv$i,c("abundance_domin","abundance_cover","abundance_frequency","abundance_presence")])
+        }
+        
         if(is.na(rv$df_d[rv$df_d$id == rv$i,c("edit")])){
           rv$df_d[rv$df_d$id == rv$i,c("edit")] <- 1
           }
@@ -1930,6 +1979,14 @@ vegManageServer <- function(id, login, tables) {
           }
 
           visit_modal(session,p = rv$p,v = v,vd0 = vd0, vd1 = vd1,d = d,edit = FALSE,s = choices_surveys())
+          
+          if(!isTruthy(d[2][[1]])){
+            updateDateInput(session,"record_date",value = NA)
+          }
+          if(!isTruthy(d[3][[1]])){
+            updateDateInput(session,"record_date_end",value = NA)
+          }
+          
           photoHandler()
           output$photo <- renderUI({p("No photo selected")})
           
