@@ -37,6 +37,9 @@ $("#enterRecords-add_record").click(
   }
 )
 
+// Old keyboard shortcut for add record in enterRecords module
+
+/*
 var down = {};
 $(document).keydown(function(e) {
     down[e.keyCode] = true;
@@ -46,6 +49,7 @@ $(document).keydown(function(e) {
     }
     down[e.keyCode] = false;
 });
+*/
 
 // Query records map select 
 
