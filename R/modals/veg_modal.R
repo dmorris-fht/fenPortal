@@ -52,7 +52,7 @@ plot_modal <- function(session,d,edit,c) {
                       selectInput(
                         inputId = ns("type"),
                         label = "Plot type",
-                        value = d[5], # FIX THIS
+                        selected = d[5], # FIX THIS
                         choices = c("sample","monitoring")
                       )
                   )
