@@ -347,21 +347,13 @@ validate_gf <- function(g,s,ss,sites0,subsites0){
     }
   
     if(isTruthy(ss) && !(ss %in% subsites0[st_is_empty(subsites0),]$id)){
-      q_ss <- subsites0[unlist(st_intersects(st_buffer(gf,10),subsites0)),c("id")]
-      # geom_ss <- dbGetQuery(con,paste0("SELECT id FROM spatial.fen_subsites WHERE geom IS NOT NULL AND id =",ss))
-      # q_ss <- dbGetQuery(con,
-      #                   paste0(
-      #                     "SELECT id FROM spatial.fen_subsites WHERE ST_Intersects(ST_Polygon('",
-      #                     ls,
-      #                     "'::geometry, 27700),ST_buffer(geom,10)) AND id =",
-      #                     ss
-      #                   )
-      #                   )
-      if(!(ss %in% q_ss$id)){
-        results$error <- 1
-        results$message <- "Grid reference not within 10m of given subsite"
+        q_ss <- subsites0[unlist(st_intersects(st_buffer(gf,10),subsites0)),c("id")]
+        
+        if(!(ss %in% q_ss$id)){
+          results$error <- 1
+          results$message <- "Grid reference not within 10m of given subsite"
+        }
       }
-    }
 }
   
   return(results)
