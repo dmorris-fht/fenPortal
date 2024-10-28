@@ -1,9 +1,84 @@
 To do:
 
-0. Query records
-1. Import records module - need to import TVERC 2023 data
-2. Record export for TVERC
+FenMap
+
 3. Species introductions
-4. AGOL import modules for observations and stratigraphy
 5. Hydro installs
-6. Vegetation data entry (+ import?) - need to import Adam's work
+6. Import Adam's 2023 work
+
+
+Modules:
+
+Update with new import table tool
+  # importObs
+  # importRecords (also broken?)
+  # importStrat
+
+loggersManage
+  # Reset paging - turn off
+  # Add new logger config only keeps new config in DT
+  # Notes modal is required, and sometimes the add new config button is disabled
+
+queryRecords
+  # County selectize broken
+   # Improve date search
+  # Color of selected records in map
+  
+  # Map doesn't always work - on first search?
+  # Map click / drag is really slow!!??
+  # DT filter doesn't work on first search - maybe a problem with the filter / columns following change in structure
+
+enterRecords
+  # Reset paging of table - can't get this to work!
+
+installsManage
+  # Remove search and add paging to bottom of DT
+  # Spinner width on load??
+  # DT row buttons
+  # Install modal, with topo and attachments
+  # Install maintenance record
+
+dataSharing
+  # Broken
+
+
+
+Species introductions
+
+
+
+
+home
+  # Add more stats
+fenMap
+ # do it
+sites
+ # Don't know if I really need this? Better done in GIS
+ # Function to explore sites and features?
+ # Function to add subsites
+surveys
+  # Column etc to record sites against surveys?
+
+
+explore Hydro
+
+loggers_manage
+
+weather_import
+
+logger_import
+
+
+
+Notes for server:
+
+####
+For leaflet need to install using this pull request. Otherwise the remove drawn polygons doesn't work. 
+
+  remotes::install_github("micahwilhelm/leaflet.extras")
+  
+####
+Need to check libraries
+
+
+remotes::install_github("daattali/shinycssloaders")

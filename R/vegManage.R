@@ -6,10 +6,12 @@ vegManageUI <- function(id){
       tagList(
         div(style="width:100%",
         column(12,
+               column(12,
+                      h3("Enter & manage vegetation data")
+                      ),
                column(8,
                       
                       column(7,
-                             h3("Enter & manage vegetation data"),
                              h4("Plots"),
                              tabsetPanel( 
                                tabPanel("Table",id = ns("table"),
@@ -222,11 +224,14 @@ vegManageServer <- function(id, login, tables, tab) {
       
       output$plotsTable <- DT::renderDT({
         
-        data.frame(
+        x <- data.frame(
           "site_name" = character(),
           "plot" = character(),
           "Buttons" = character()
                    )
+        x$site_name <- as.factor(x$site_name)
+        x$plot <- as.factor(x$plot)
+        x
         },
           server = TRUE,
           escape = FALSE,
@@ -255,6 +260,8 @@ vegManageServer <- function(id, login, tables, tab) {
       observe({
         req(rv$df)
         x <- rv$df[,c("site_name","plot","Buttons")]
+        x$site_name <- as.factor(x$site_name)
+        x$plot <- as.factor(x$plot)
         proxy_DT %>% 
           DT::replaceData(data = x, resetPaging = FALSE, rownames = FALSE) %>% 
           updateFilters(data = x)
@@ -635,7 +642,7 @@ vegManageServer <- function(id, login, tables, tab) {
         iv_modal$add_rule("gridref",function(value){
           v <- validate_gf(input$gridref, 
                            s = as.numeric(input$site), 
-                           ss = as.numeric(input$subsites),
+                           ss = as.numeric(input$subsite),
                            sites0 = tables$sites0,
                            subsites0 = tables$subsites0)
           if(v$error == 1 && isTruthy(input$gridref)){
@@ -686,7 +693,7 @@ vegManageServer <- function(id, login, tables, tab) {
         req(nchar(gsub(" ", "",input$gridref)) == 12 &&
               validate_gf(input$gridref, 
                           s = as.numeric(input$site), 
-                          ss = as.numeric(input$subsites),
+                          ss = as.numeric(input$subsite),
                           sites0 = tables$sites0,
                           subsites0 = tables$subsites0)$error == 0)
         showModal(
@@ -708,14 +715,13 @@ vegManageServer <- function(id, login, tables, tab) {
             q <- paste0("UPDATE spatial.monitoring_vegetation
                         SET
                           site = ",as.numeric(input$site),",
-                          subsite = ",null_num_val(input$subsite),",
+                          subsite = ",null_num_val(as.numeric(input$subsite)),",
                           \"group\" = ",null_text_val(con0,input$group),",
                           plot = ",null_text_val(con0,input$plot),",
                           gridref = ",null_text_val(con0,gsub(" ","",toupper(input$gridref))),",
                           transect_side = ",null_text_val(con0,input$transect_side),",
                           dim = ",null_text_val(con0,input$dim),",
-                          note = ",null_text_val(con0,input$note),",
-                          type = ",null_text_val(con0,input$type),"
+                          type = ",null_text_val(con0,input$type),",
                           note = ",null_text_val(con0,input$note)," 
                         WHERE id = ",id,
                       " RETURNING 
@@ -735,30 +741,19 @@ vegManageServer <- function(id, login, tables, tab) {
                           created_date,
                           last_edited_user,
                           last_edited_date")
-            r <- list(error = NA, data = NA)
-            tryCatch({
-              r0 <- postgresqlExecStatement(con0, q)
-              r1 <- postgresqlFetch(r0)
+              u <- dbGetQuery(con0,q)
               dbDisconnect(con0)
-              r$data <- r1
-            },
-            error=function(err){
-              dbDisconnect(con0)
-              r$error <- err
-            }
-            )
-            return(r)
-          })%...>%(function(r){
-            if(isTruthy(r$error)){
+              
+            return(u)
+          })%...>%(function(u){
+            if(!isTruthy(u)){
               submitModal()
               output$submitMessage <- renderUI({
                 tagList(
-                  h4("An error occured"),
-                  p(r$error)
-                )
+                  h4("An error occured")
+                  )
               })
             }else{
-              u <- r$data
               u$site_name <- tables$sites[tables$sites$id == u$site, c("site")]
               if(isTruthy(u$subsite)){
                 u$subsite_name <- tables$subsites[tables$subsites$id == u$subsite,c("subsite")]
@@ -1864,16 +1859,30 @@ vegManageServer <- function(id, login, tables, tab) {
           plot_modal(session, d, edit = TRUE, choices_site())
           
           observeEvent(input$site,{
-            if(length(choices_subsite()) > 0){
-              updateSelectizeInput(session,"subsite",
-                                   choices = choices_subsite(),
-                                   selected = "")
-            }else{
-              updateSelectizeInput(session,"subsite",
-                                   choices = choices_subsite(),
-                                   selected = "",
-                                   options=list(placeholder = "No subsites"))
+            if(input$site != d[1]){
+              if(length(choices_subsite()) > 0){
+                updateSelectizeInput(session,"subsite",
+                                     choices = choices_subsite(),
+                                     selected = "")
+              }else{
+                updateSelectizeInput(session,"subsite",
+                                     choices = choices_subsite(),
+                                     selected = "",
+                                     options=list(placeholder = "No subsites"))
               }
+            }else{
+              if(length(choices_subsite()) > 0){
+                updateSelectizeInput(session,"subsite",
+                                     choices = choices_subsite(),
+                                     selected = d[2])
+              }else{
+                updateSelectizeInput(session,"subsite",
+                                     choices = choices_subsite(),
+                                     selected = "",
+                                     options=list(placeholder = "No subsites"))
+              }
+            }
+            
             })
           
           shinyjs::disable("submit_p")
@@ -1951,7 +1960,7 @@ vegManageServer <- function(id, login, tables, tab) {
             if(length(choices_subsite()) > 0){
               updateSelectizeInput(session,"subsite",
                                    choices = choices_subsite(),
-                                   selected = "")
+                                   selected = d[2])
               }else{
                 updateSelectizeInput(session,"subsite",
                                    choices = choices_subsite(),
