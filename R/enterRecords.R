@@ -600,19 +600,33 @@ enterRecordsServer <- function(id, login, tables, tab) {
         return(c)
       })
       
-      observe({
+      observeEvent(input$site,{
         if(length(choices_subsite()) > 0){
-          updateSelectizeInput(
-            session,
-            "subsite",
-            choices=choices_subsite(),
-            selected = "",
-            server = FALSE,
-            options = list(
-              maxItems = 1,
-              onInitialize = I('function() { this.setValue(""); }')
+          if(isTruthy(input$recordsTable_rows_selected)){
+            updateSelectizeInput(
+              session,
+              "subsite",
+              choices=choices_subsite(),
+              selected = d$data[as.numeric(input$recordsTable_rows_selected),c('subsite')],
+              server = FALSE,
+              options = list(
+                maxItems = 1,
+                onInitialize = I('function() { this.setValue(""); }')
+              )
             )
-          )
+          }else{
+            updateSelectizeInput(
+              session,
+              "subsite",
+              choices=choices_subsite(),
+              selected = "",
+              server = FALSE,
+              options = list(
+                maxItems = 1,
+                onInitialize = I('function() { this.setValue(""); }')
+              )
+            )
+          }
           }
         else{
           updateSelectizeInput(
@@ -885,7 +899,9 @@ enterRecordsServer <- function(id, login, tables, tab) {
         # Update form controls with values from selected DT row
         updateTextInput(session,'site_record', value = d$data[a,c('site_record')])
         updateSelectizeInput(session,'site',selected = d$data[a,c('site')])
-        updateSelectizeInput(session,'subsite',selected = d$data[a,c('subsite')])
+        
+        updateSelectizeInput(session,'subsite',selected = d$data[a,c('subsite')],choices = choices_subsite())
+        
         updateSelectizeInput(session,'taxon_nbn',selected = d$data[a,c('taxon_nbn')])
         updateTextInput(session,'gridref', value = d$data[a,c('gridref')])
         updateTextInput(session,'quantity', value = d$data[a,c('quantity')])
