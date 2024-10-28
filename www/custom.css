@@ -350,3 +350,16 @@ div[data-spinner-id~="dipsImport-module"] {
   width:100%;
   z-index: 10000000;
 }
+
+div[data-spinner-id~="stratImport-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #stratImport-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
