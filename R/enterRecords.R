@@ -1421,12 +1421,30 @@ enterRecordsServer <- function(id, login, tables, tab) {
         )%...>% (function(i){
           if(isTruthy(i)){
             # add row to tables$subsites
-            r <- nrow(tables$subsites)
-            tables$subsites[r+1,] <- c(i,
-                                       input$site_modal,
-                                       names(choices_site())[which(choices_site() == input$site_modal)],
-                                       input$subsite_modal
-                                       )
+            
+            row <- data.frame("id" = c(i),
+                              "site" = c(input$site_modal),
+                              "site_name" = names(choices_site())[which(choices_site() == input$site_modal)],
+                              "subsite" = input$subsite_modal
+                              )
+            geom <- st_sfc(NA)
+            tables$subsites0 <- rbind(tables$subsites0,st_sf(row, geom,crs=st_crs(27700)))
+            tables$subsites <- rbind(tables$subsites,row)
+            
+            # r <- nrow(tables$subsites)
+            
+            # tables$subsites[r+1,] <- c(i,
+            #                            input$site_modal,
+            #                            names(choices_site())[which(choices_site() == input$site_modal)],
+            #                            input$subsite_modal
+            #                            )
+            # tables$subsites0[r+1,] <- c(i,
+            #                            input$site_modal,
+            #                            names(choices_site())[which(choices_site() == input$site_modal)],
+            #                            input$subsite_modal
+            #                            )
+            
+            updateSelectizeInput(session,"subsite",choices = choices_subsite(),selected = i)
             
             showModal(
               modalDialog(
