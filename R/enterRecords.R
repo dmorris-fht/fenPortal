@@ -891,56 +891,63 @@ enterRecordsServer <- function(id, login, tables, tab) {
       
       ## Click row in DT ----
       
-      observeEvent(input$recordsTable_rows_selected,{
-        d$mode <- "edit"
-        d$r <- as.numeric(input$recordsTable_rows_selected)
-        a <- d$r
-
-        # Update form controls with values from selected DT row
-        updateTextInput(session,'site_record', value = d$data[a,c('site_record')])
-        updateSelectizeInput(session,'site',selected = d$data[a,c('site')])
-        
-        updateSelectizeInput(session,'subsite',selected = d$data[a,c('subsite')],choices = choices_subsite())
-        
-        updateSelectizeInput(session,'taxon_nbn',selected = d$data[a,c('taxon_nbn')])
-        updateTextInput(session,'gridref', value = d$data[a,c('gridref')])
-        updateTextInput(session,'quantity', value = d$data[a,c('quantity')])
-        updateTextInput(session,'status', value = d$data[a,c('status')])
-        updateTextInput(session,'sex', value = d$data[a,c('sex')])
-        updateTextInput(session,'stage', value = d$data[a,c('stage')])
-        updateTextInput(session,'note', value = d$data[a,c('note')])
-        updateDateInput(session,'record_date', value = d$data[a,c('record_date')])
-        updateDateInput(session,'record_date_end', value = d$data[a,c('record_date_end')])
-        updateTextInput(session,'recorder', value = d$data[a,c('recorder')])
-        updateTextInput(session,'determiner', value = d$data[a,c('determiner')])
-        updateTextInput(session,'method', value = d$data[a,c('method')])
-        updateSelectizeInput(session,'survey',selected = d$data[a,c('survey')])
-        updateNumericInput(session,'start_year', value = d$data[a,c('start_year')])
-        updateNumericInput(session,'end_year', value = d$data[a,c('end_year')])
-        updateNumericInput(session,'start_month', value = d$data[a,c('start_month')])
-        updateNumericInput(session,'end_month', value = d$data[a,c('end_month')])
-        
-        # Enable all form controls
-        updateCheckboxInput(session,'site_record_check',value = 0)
-        updateCheckboxInput(session,'site_check',value = 0)
-        updateCheckboxInput(session,'subsite_check',value = 0)
-        updateCheckboxInput(session,'taxon_nbn_check',value = 0)
-        updateCheckboxInput(session,'gridref_check',value = 0)
-        updateCheckboxInput(session,'quantity_check',value = 0)
-        updateCheckboxInput(session,'status_check',value = 0)
-        updateCheckboxInput(session,'sex_check',value = 0)
-        updateCheckboxInput(session,'stage_check',value = 0)
-        updateCheckboxInput(session,'note_check',value = 0)
-        updateCheckboxInput(session,'record_date_check',value = 0)
-        updateCheckboxInput(session,'record_date_end_check',value = 0)
-        updateCheckboxInput(session,'recorder_check',value = 0)
-        updateCheckboxInput(session,'determiner_check',value = 0)
-        updateCheckboxInput(session,'method_check',value = 0)
-        updateCheckboxInput(session,'survey_check',value = 0)
-        updateCheckboxInput(session,'start_year_check',value = 0)
-        updateCheckboxInput(session,'end_year_check',value = 0)
-        updateCheckboxInput(session,'start_month_check',value = 0)
-        updateCheckboxInput(session,'end_month_check',value = 0)
+      observeEvent(input$recordsTable_rows_selected,ignoreNULL = FALSE,{
+        if(isTruthy(input$recordsTable_rows_selected)){
+          d$mode <- "edit"
+          d$r <- as.numeric(input$recordsTable_rows_selected)
+          a <- d$r
+  
+          # Update form controls with values from selected DT row
+          updateTextInput(session,'site_record', value = d$data[a,c('site_record')])
+          updateSelectizeInput(session,'site',selected = d$data[a,c('site')])
+          
+          updateSelectizeInput(session,'subsite',selected = d$data[a,c('subsite')],choices = choices_subsite())
+          
+          updateSelectizeInput(session,'taxon_nbn',selected = d$data[a,c('taxon_nbn')])
+          
+          updateTextInput(session,'gridref', value = d$data[a,c('gridref')])
+          updateTextInput(session,'quantity', value = d$data[a,c('quantity')])
+          updateTextInput(session,'status', value = d$data[a,c('status')])
+          updateTextInput(session,'sex', value = d$data[a,c('sex')])
+          updateTextInput(session,'stage', value = d$data[a,c('stage')])
+          updateTextInput(session,'note', value = d$data[a,c('note')])
+          updateDateInput(session,'record_date', value = d$data[a,c('record_date')])
+          updateDateInput(session,'record_date_end', value = d$data[a,c('record_date_end')])
+          updateTextInput(session,'recorder', value = d$data[a,c('recorder')])
+          updateTextInput(session,'determiner', value = d$data[a,c('determiner')])
+          updateTextInput(session,'method', value = d$data[a,c('method')])
+          updateSelectizeInput(session,'survey',selected = d$data[a,c('survey')])
+          updateNumericInput(session,'start_year', value = d$data[a,c('start_year')])
+          updateNumericInput(session,'end_year', value = d$data[a,c('end_year')])
+          updateNumericInput(session,'start_month', value = d$data[a,c('start_month')])
+          updateNumericInput(session,'end_month', value = d$data[a,c('end_month')])
+          
+          # Enable all form controls
+          updateCheckboxInput(session,'site_record_check',value = 0)
+          updateCheckboxInput(session,'site_check',value = 0)
+          updateCheckboxInput(session,'subsite_check',value = 0)
+          updateCheckboxInput(session,'taxon_nbn_check',value = 0)
+          updateCheckboxInput(session,'gridref_check',value = 0)
+          updateCheckboxInput(session,'quantity_check',value = 0)
+          updateCheckboxInput(session,'status_check',value = 0)
+          updateCheckboxInput(session,'sex_check',value = 0)
+          updateCheckboxInput(session,'stage_check',value = 0)
+          updateCheckboxInput(session,'note_check',value = 0)
+          updateCheckboxInput(session,'record_date_check',value = 0)
+          updateCheckboxInput(session,'record_date_end_check',value = 0)
+          updateCheckboxInput(session,'recorder_check',value = 0)
+          updateCheckboxInput(session,'determiner_check',value = 0)
+          updateCheckboxInput(session,'method_check',value = 0)
+          updateCheckboxInput(session,'survey_check',value = 0)
+          updateCheckboxInput(session,'start_year_check',value = 0)
+          updateCheckboxInput(session,'end_year_check',value = 0)
+          updateCheckboxInput(session,'start_month_check',value = 0)
+          updateCheckboxInput(session,'end_month_check',value = 0)
+        }else{
+          d$mode <- "new"
+          d$r <- NA
+          clear_form()
+          }
       })
       
       ## Add record button ----
@@ -1036,7 +1043,10 @@ enterRecordsServer <- function(id, login, tables, tab) {
         
         clear_form()
         
-        runjs("$('#enterRecords-taxon_nbn-selectized').click()"
+        runjs("
+              $('#enterRecords-taxon_nbn-selectized').click()
+              
+              "
         )
       }
       
@@ -1216,6 +1226,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
         d$data <- d$data[0,]
         d$mode <- "new"
         removeModal()
+        clear_form()
       })
 
       ## Submit records ----
