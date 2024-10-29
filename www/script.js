@@ -29,14 +29,6 @@ $("#loginForm-loginButton").click(
   }
 )
 
-// Record entry controls
-
-$("#enterRecords-add_record").click(
-  function(){
-  $("#enterRecords-taxon_nbn-selectized").click()
-  }
-)
-
 // Old keyboard shortcut for add record in enterRecords module
 
 /*

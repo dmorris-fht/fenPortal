@@ -1035,6 +1035,9 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         
         clear_form()
+        
+        runjs("$('#enterRecords-taxon_nbn-selectized').click()"
+        )
       }
       
       ## Function to clear form for controls not locked ----
