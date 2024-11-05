@@ -184,7 +184,7 @@ function(input, output, session) {
       observe({
         if(login$role == "cru"){
           if(n$importObs == 1){
-            importObsServer("importObs", login)
+            importObsServer("importObs", login, tables)
           }
         }else{
           shinyjs::hide(selector = "a[data-value='importObs']" )

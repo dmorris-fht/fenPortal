@@ -14,6 +14,12 @@ importObsUI <- function(id){
                         The layer must follow the template available <a href='https://fht.maps.arcgis.com/home/item.html?id=c513fe6f65494b8ca4ca671f60773729', target='_blank'>here</a>, and the service must be shared publicly (e.g. via a view layer) or the URL should include an authentication key.</p>
                         <p>Target notes already imported will be skipped - these should be edited in the database.</p><br>"),
                         textAreaInput(ns("agol_url"), label="Enter ArcGIS Online REST service URL", width = "100%", resize = "vertical", placeholder ="ArcGIS REST service URL"),
+                        selectizeInput(ns("sites"), 
+                                       label = "Sites to import (optional)",
+                                       multiple = TRUE,
+                                       choices = c(""),
+                                       options = list(placeholder = 'Select a site')
+                                       ),
                         actionButton(ns("importAGOL"), label = "Import data")
                         )
                ,)
@@ -36,7 +42,7 @@ importObsUI <- function(id){
     )
   }
 
-importObsServer <- function(id, login) {
+importObsServer <- function(id, login, tables) {
   moduleServer(
     id,
     function(input, output, session) {
@@ -46,12 +52,33 @@ importObsServer <- function(id, login) {
       
       # Module initialisation ---- 
       observe({
+        req(tables$sites)
         runjs(
           paste0(
           "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
                  $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
                  )
         )
+      })
+      
+      user <- login$username
+      password <- login$password
+      
+      isolate({
+        app_tables(tables, c("sites","subsites","surveys"))
+        
+        uksi_load(c(0))
+      })
+      
+      choices_site <- reactive({
+        if(isTruthy(tables$sites)){
+          c <- tables$sites$id
+          names(c) <- paste0(tables$sites$site, " [",tables$sites$county, "]")
+        }
+        else{
+          c <- c("")
+        }
+        return(c)
       })
       
       # Reactives ----
@@ -68,6 +95,22 @@ importObsServer <- function(id, login) {
         }
       })
       
+      iv <- InputValidator$new()
+      iv$add_rule("agol_url",sv_required())
+      iv$enable()
+      
+      observe({
+        updateSelectizeInput(session,
+                             "sites",
+                             choices=choices_site(), 
+                             selected = "",
+                             server = FALSE,
+                             options = list(
+                               onInitialize = I('function() { this.setValue(""); }')
+                               )
+                             )
+        })
+      
       # AGOL import ----
       
       observeEvent(input$importAGOL,{
@@ -82,140 +125,33 @@ importObsServer <- function(id, login) {
       
       # Make query to AGOL and import
       observeEvent(input$import1,{
-        # Fetch AGOL data
-        
-        f <- fetch_agol(input$agol_url,NULL,TRUE,TRUE)
-        
-        if(isTruthy(f$data) && nrow(f$data)>0){
-          con0 <- poolCheckout(con_global)
-          guid <- dbGetQuery(con0,paste0("SELECT guid FROM spatial.monitoring_observations WHERE guid IN ",con_sql_string(f$data$guid)))
-          cols <- dbGetQuery(con0,"SELECT column_name FROM information_schema.columns WHERE table_schema = 'spatial' AND table_name = 'monitoring_observations'; ")
-          poolReturn(con0)
-          
-          # Check column names and then subset by new observations only
-          if(all(colnames(f$data) %in% unlist(cols))){
-            import$data <- f$data[!(f$data$guid %in% guid$guid),]
-            import$attach <- f$attach[!(f$attach$rel_guid %in% guid$guid),]
-            import$agol <- 1 #agol verifier
-          }else{
-            import$agol <- 0
-            import_agol_error()
-            return("Error")
-            }
-          }else{
-            import$agol <- 0
-            import_agol_error()
-            return("Error")
-          }
-        
-        # No data
-        if(nrow(import$data) == 0 || !isTruthy(import$data)){
-          import_NA_modal()
-          return("No data to import")
-        }
-        
-        # Start import
-        
-        req(import$agol == 1)
-        req(import$data)
-        
-        removeModal()
-        import_progress_modal()
+        req(input$agol_url)
+        showModal(import_progress_modal())
         
         future_promise({
+          # Fetch AGOL data and import
+          
+          where <- paste0("(site IN (",paste(input$sites,collapse=","),"))")
+          f <- fetch_agol( url, where, TRUE, TRUE)
+          
           con0 <- fenDb0(user,password)
           
-          # Construct monitoring observations insert string
-          Q1 <- NULL
-          for(i in 1:nrow(import$data)){
-            d <- import$data[i,]
-            Q1 <- c(Q1,
-                    paste0("(",
-                           "ST_GeomFromText('", d$geom, "',27700),",
-                           null_num_val(d$site),",",
-                           null_num_val(d$survey),",",
-                           null_text_val(con0,d$obs_type),",",
-                           null_timestamp_val(d$date),",",
-                           null_num_val(d$direction),",",
-                           null_text_val(con0,d$observer),",",
-                           null_text_val(con0,d$label),",",
-                           null_text_val(con0,d$notes),",",
-                           null_text_val(con0,d$source_created_user),",",
-                           null_timestamp_val(d$source_created_date),",",
-                           null_text_val(con0,d$source_last_edited_user),",",
-                           null_timestamp_val(d$source_last_edited_date),",'",
-                           d$guid
-                           ,"')"
-                           )
-                    )
-            }
-          
-          q1 <- paste0("INSERT INTO spatial.monitoring_observations (geom,site,survey,obs_type,date,
-                                                                    direction,observer,label,notes,
-                                                                    source_created_user,source_created_date,
-                                                                    source_last_edited_user,source_last_edited_date,guid)  VALUES \n",
-                       paste(Q1,collapse = ", \n "),
-                       " \n ON CONFLICT (guid) DO NOTHING"
-                       )
-          
-          # Download + compress attachments and construct insert string
-          if(isTruthy(import$attach) && nrow(import$attach) > 0){
-            q2 <- "INSERT INTO spatial.monitoring_observations_attach (guid,rel_guid,att_type,att_name,att_size,att) VALUES \n"
-            f <- 500 # Max file size in kB
-            sz <- 2000 # Resize image max dim in px
-            
-            Q2 <- NULL
-            for(i in 1:nrow(import$attach)){
-              
-              # Download attachments and convert to binary
-              if(import$attach[i,c("att_type")] == "image/jpeg"){
-                tf <- tempfile(fileext=".jpeg")
-                download.file(import$attach[i,c("url")], tf, mode = "wb")
-                
-                # Compress images
-                if(import$attach[i,c("att_size")] > f * 1000){
-                  img <- magick::image_read(tf)
-                  
-                  g <- magick::geometry_size_pixels(width = sz, height = sz, preserve_aspect = TRUE)
-                  image_write(image_resize(img,geometry =g),tf,quality=20, compression = "JPEG")
-                  import$attach[i,c("att_size")] <- image_info(image_read(tf))$filesize
-                }
-                
-                z <- readRaw(tf)
-                import$attach[i,c("att")] <- paste0("\\x", paste(z$fileRaw, collapse = ""))
-                
-                # construct attachment values string
-                Q2 <- c(Q2,
-                        paste0("('",
-                               import$attach[i,c("guid")],
-                               
-                               "', (SELECT guid FROM obs WHERE guid = '",import$attach[i,c("rel_guid")],"'),'",
-                               
-                               # "','", import$attach[i,c("rel_guid")],"','",
-                               
-                               import$attach[i,c("att_type")],"','",
-                               import$attach[i,c("att_name")],"',",
-                               import$attach[i,c("att_size")],",'",
-                               import$attach[i,c("att")] ,"')")
-                        )
-                }
-              }
-            # construct final query string
-            q3 <- paste0(
-              "WITH obs AS (",q1,"\n RETURNING guid", ") \n",
-              q2, 
-              paste(Q2,collapse = ", \n "),
-              " \n ON CONFLICT (guid) DO NOTHING"
-            )
-          }else{
-            q3 <- q1
-          }
-          
-          r <- dbGetQuery(con0,q3)
+          r <- import_table(con0,
+                            "spatial",
+                            "monitoring_observations",
+                            1,
+                            postgresqlEscapeStrings(con0,input$agol_url),
+                            NULL,
+                            TRUE,
+                            TRUE,
+                            f$data,
+                            f$attach,
+                            500,
+                            2000
+                            )
           
           dbDisconnect(con0)
           return(r)
-          
         })%...>%(function(r){
           if(isTruthy(r)){
             removeModal()
@@ -223,7 +159,8 @@ importObsServer <- function(id, login) {
           }else{
             import_error_modal()
           }
-        })
+        }) 
+        
         })
       
       # Modal functions ----
