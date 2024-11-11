@@ -130,7 +130,6 @@ importObsServer <- function(id, login, tables) {
         
         future_promise({
           # Fetch AGOL data and import
-          
           where <- paste0("(site IN (",paste(input$sites,collapse=","),"))")
           f <- fetch_agol( url, where, TRUE, TRUE)
           
@@ -140,7 +139,7 @@ importObsServer <- function(id, login, tables) {
                             "spatial",
                             "monitoring_observations",
                             1,
-                            postgresqlEscapeStrings(con0,input$agol_url),
+                            input$agol_url,
                             NULL,
                             TRUE,
                             TRUE,
@@ -153,14 +152,14 @@ importObsServer <- function(id, login, tables) {
           dbDisconnect(con0)
           return(r)
         })%...>%(function(r){
-          if(isTruthy(r)){
+          if(!isTruthy(r$error)){
             removeModal()
             import_success_modal()
           }else{
-            import_error_modal()
+            import_error_modal(r$error)
           }
-        }) 
-        
+        })
+
         })
       
       # Modal functions ----
@@ -208,11 +207,12 @@ importObsServer <- function(id, login, tables) {
       }
       
       #Modal for upload error
-      import_error_modal <- function() {
+      import_error_modal <- function(err) {
         ns <- session$ns
         modalDialog(
           div(
-            h4("Import error")
+            h4("Import error"),
+            p(err)
             ,style="width:100%; text-align:center")
           , footer=NULL,size="s",easyClose=TRUE,fade=TRUE) %>% showModal()
       }
