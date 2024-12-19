@@ -120,7 +120,7 @@ queryRecordsUI <- function(id){
                                                selectInput(
                                                  inputId = ns("fenspp"),
                                                  label = "Fen plant species",
-                                                 choices = choices_fenspp,
+                                                 choices = choices_fspp,
                                                  selected = ""
                                                ) 
                                            )

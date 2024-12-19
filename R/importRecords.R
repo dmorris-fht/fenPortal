@@ -180,7 +180,7 @@ importRecordsServer <- function(id, login, tables) {
        
       #Data tables ----
       ## Csv table  ----
-      x0 <- read.csv("./www/templates/import_template.csv", header = T)
+      x0 <- read.csv("./www/templates/records_import_template.csv", header = T)
       x1 <- x0
       x1[1,] <- NA
       x1$Buttons <- NA
