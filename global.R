@@ -836,11 +836,14 @@ import_table <- function(con,
     # Skip existing rows in target table
     guid <- dbGetQuery(con,paste0("SELECT guid::varchar FROM ",schema,".",table," WHERE guid IN ",con_sql_string(data$guid)))
       if(isTruthy(guid) & nrow(guid) > 0 ){
-        data <- data[which(!(as.character(data$guid) %in% guid$guid)),]
-        if(import_attach){
-          print(attach)
-          print(!(as.character(attach$rel_guid) %in% guid$guid))
-          attach <- attach[which(!(as.character(attach$rel_guid) %in% guid$guid)),]
+        if(nrow(guid) == nrow(data)){
+          r$error <- "Data already in database"
+          return(r)
+        }else{
+          data <- data[which(!(as.character(data$guid) %in% guid$guid)),]
+          if(import_attach){
+            attach <- attach[which(!(as.character(attach$rel_guid) %in% guid$guid)),]
+          }
         }
       }
   }
@@ -1271,6 +1274,7 @@ choices_fspp <- NULL
 string_fspp <- NULL
 choices_afspp <- NULL
 string_afspp <- NULL
+fspp <- NULL
 
 uksi_load <- function(x){
   if(0 %in% x && !isTruthy(choices_uksi)){
