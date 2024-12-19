@@ -42,8 +42,8 @@ dashboardPage(
       
       menuItem("Vegetation monitoring",icon = icon("leaf"),expandedName = "veg",
                menuSubItem("Enter & manage data", tabName = "vegManage"),
+               menuSubItem("Import vegetation data", tabName = "importVeg"),
                menuSubItem("Analyse vegetation data", tabName = "vegAnalyse")
-               
                ),
 
         menuItem("Survey & monitoring tools", icon = icon("tools"), expandedName = "monTools",
@@ -128,6 +128,12 @@ dashboardPage(
       tabItem(tabName = "vegManage",
               fluidRow(
                 vegManageUI("vegManage")
+              )
+      ),
+      
+      tabItem(tabName = "importVeg",
+              fluidRow(
+                importVegUI("importVeg")
               )
       ),
       
