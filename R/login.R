@@ -78,15 +78,19 @@ loginServer <- function(id, login) {
         {
           login$username <- input$username
           login$password <- input$password
+          login$admin <- FALSE
           login$test <- TRUE
           login$con <- fenDb(input$username, input$password)
           
           roles <- dbGetQuery(login$con, paste0("SELECT rolname FROM pg_roles WHERE
                          pg_has_role( '", input$username ,"', oid, 'member')"))
 
-          if("fen_create_read_update" %in% roles$rolname || "azure_pg_admin" %in% roles$rolname){
+          if("azure_pg_admin" %in% roles$rolname){
             login$role <- "cru"
-            
+            login$admin <- TRUE
+          }
+          if("fen_create_read_update" %in% roles$rolname){
+            login$role <- "cru"
           }
           if("fen_create_read" %in% roles$rolname){
             login$role <- "cr"
