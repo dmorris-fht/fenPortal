@@ -338,12 +338,12 @@ dataSharingServer <- function(id, login){
                   (",as.numeric(input$data_sharing),
                   ", TO_TIMESTAMP('",rv$timestamp,"','YYYY-MM-DD HH24:MI:SS'), '",
                   postgresqlEscapeStrings(con0,input$export_note),"', '",
-                  user,"') RETURNING id, created_date, created_user"
+                  user,"') RETURNING id, created_date, created_user, guid"
                   )
                 if(rv$t == 1){
                   d1 <- dbGetQuery(con0, q)
                 }
-                if(rv$t > 1){
+                if(rv$t == 2){
                   d1 <- st_read(dsn = con0, query = q, geometry_column = "geom")
                 }
 
@@ -361,7 +361,8 @@ dataSharingServer <- function(id, login){
                                                   NA,
                                                   result$i$created_user,
                                                   NA,
-                                                  user
+                                                  user,
+                                                 result$i$guid #guid column
                                               )
                   rv$dl <- result$d
 
@@ -388,23 +389,24 @@ dataSharingServer <- function(id, login){
                       }
                     )
                   }
-                  if(rv$t > 1){
+                  if(rv$t == 2){
                     output$dlExport <- downloadHandler(
                       filename = function() {
                         paste0(name, ".zip")
                       },
                       content = function(file) {
+                        
                         tmp.path <- dirname(file)
                         name.base <- file.path(tmp.path, name)
                         name.glob <- paste0(name.base, ".*")
-                        name.shp  <- paste0(name.base, ".shp")
                         name.zip  <- paste0(name.base, ".zip")
                         
                         if (length(Sys.glob(name.glob)) > 0) file.remove(Sys.glob(name.glob))
-                        sf::st_write(rv$dl, dsn = name.shp, 
-                                     driver = "ESRI Shapefile", quiet = TRUE)
                         
-                        zip::zipr(zipfile = name.zip, files = Sys.glob(name.glob))
+                        write_sf(rv$dl, name, driver = "ESRI Shapefile")
+                        zip::zip(zipfile=name.zip,files=name)
+                        unlink("temp_fens", recursive=TRUE)
+                        
                         req(file.copy(name.zip, file))
                         
                         if (length(Sys.glob(name.glob)) > 0) file.remove(Sys.glob(name.glob))
