@@ -5,8 +5,10 @@ function(input, output, session) {
   #Session reactives----
 
   # Login reactive
-  login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, con = NA)
-
+  login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, admin = NA, con = NA)
+  
+  
+  
   # Session copies of smaller db tables ----
   tables <- reactiveValues(sites0 = NA,
                            sites = NA,
@@ -27,6 +29,7 @@ function(input, output, session) {
     enterRecords = 0, 
     importRecords = 0,
     vegManage = 0,
+    importVeg = 0,
     plantLists = 0,
     vegLists = 0,
     importObs = 0,
@@ -76,6 +79,9 @@ function(input, output, session) {
         }
         if(input$menu == "vegManage"){
           n$vegManage <- n$vegManage + 1
+        }
+        if(input$menu == "importVeg"){
+          n$importVeg <- n$importVeg + 1
         }
         if(input$menu == "dataSharing"){
           n$dataSharing <- n$dataSharing + 1
@@ -139,12 +145,21 @@ function(input, output, session) {
         runjs(
           "$('ul[data-value=\\'enterRecords\\']').closest('li').hide();
             $('ul[data-value=\\'importRecords\\']').closest('li').hide();
+            $('ul[data-value=\\'importVeg\\']').closest('li').hide();
+            $('ul[data-value=\\'importObs\\']').closest('li').hide();
             $('ul[data-value=\\'dipsImport\\']').closest('li').hide();
+            $('ul[data-value=\\'weatherImport\\']').closest('li').hide();
+            $('ul[data-value=\\'loggersImport\\']').closest('li').hide();
             $('ul[data-value=\\'stratImport\\']').closest('li').hide();
           "
-          
           )
-        }
+      }
+      
+      if(!login$admin){
+        runjs(
+          "$('ul[data-value=\\'dataSharing\\']').closest('li').hide();"
+        )
+      }
       
       # Initialise enterRecords  ----
       observe({
@@ -164,6 +179,13 @@ function(input, output, session) {
       observe({
         if(n$vegManage == 1){
           vegManageServer("vegManage", login, tables, input$menu)
+        }
+      })
+      
+      # Initialise importVeg  ----
+      observe({
+        if(n$importVeg == 1){
+          importVegServer("importVeg", login, tables)
         }
       })
       
