@@ -401,7 +401,7 @@ dipsImportServer <- function(id,login,tables) {
             sum(apply(import$data[c("dip_date_time")],1,function(x){!IsDate(x,"%Y-%m-%d %H:%M")})) == 0 &&
             sum(apply(import$data[c("dip_depth_top")],1,
                       function(x){
-                        !(is.numeric(x) && floor(as.numeric(x)) == as.numeric(x) ||
+                        !(is.numeric(x) ||
                         is.na(x))
                         })) == 0 &&
             sum(!(import$data$dip_null %in% c(NA,0,1,2,3,4,5,6))) == 0
@@ -431,6 +431,8 @@ dipsImportServer <- function(id,login,tables) {
       })
       
       # Upload ----
+      
+      # NEED TO FIX THIS AS DOESN'T PICK UP ERROR IN TABLE INSERT E.G. IF DUPLICATED DIP / DATE
       
       # Upload event
       observeEvent(input$import1,{
