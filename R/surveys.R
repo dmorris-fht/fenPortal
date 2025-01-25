@@ -547,12 +547,12 @@ surveyServer <- function(id, login, tables) {
         
         iv3 <- InputValidator$new()
         iv3$add_rule("project_new",function(value){
-          if(input$project_new %in% tables$projects$project){
+          if(isTruthy(input$project_new) & input$project_new %in% tables$projects$project){
             return("Project already exists")
           }
         })
         iv3$add_rule("project_new",sv_required())
-        iv$enable()
+        iv3$enable()
       })
       
       observe({
