@@ -127,11 +127,21 @@ importObsServer <- function(id, login, tables) {
       observeEvent(input$import1,{
         req(input$agol_url)
         showModal(import_progress_modal())
-        
+        where <- paste0("(site IN (",paste(input$sites,collapse=","),"))")
+
         future_promise({
+          showModal(
+            modalDialog(
+              div(style="text-align:left;width:60%",
+                  tags$h4("Uploading",class="loading"),
+              )
+              ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE
+            )
+          )
+          
           # Fetch AGOL data and import
-          where <- paste0("(site IN (",paste(input$sites,collapse=","),"))")
-          f <- fetch_agol( url, where, TRUE, TRUE)
+          
+          f <- fetch_agol( input$agol_url, where, TRUE, TRUE)
           
           con0 <- fenDb0(user,password)
           
@@ -148,9 +158,8 @@ importObsServer <- function(id, login, tables) {
                             500,
                             2000
                             )
-          
-          dbDisconnect(con0)
-          return(r)
+==          dbDisconnect(con0)
+        return(r)
         })%...>%(function(r){
           if(!isTruthy(r$error)){
             removeModal()

@@ -615,22 +615,7 @@ fetch_agol <- function( url, where, geometry, attachments){
   }
   
   #url for querying AGOL
-  url <- parse_url(paste(u,"/query",sep=""))
-  
-  # Original version which fetched geojson but returned all data types as char
-  # if(g == "true"){
-  #   url$query <- list(
-  #     where = w,
-  #     returnGeometry = g,
-  #     outFields = "*",
-  #     f = "geojson")
-  # }else{
-  #   url$query <- list(
-  #     where = w,
-  #     returnGeometry = g,
-  #     outFields = "*",
-  #     f = "json")
-  # }
+  url <- parse_url(paste0(u,"/query"))
   
   url$query <- list(
     where = w,
