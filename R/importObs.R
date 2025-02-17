@@ -22,7 +22,7 @@ importObsUI <- function(id){
                                        ),
                         actionButton(ns("importAGOL"), label = "Import data")
                         )
-               ,)
+               )
                
                )
       )
@@ -158,7 +158,7 @@ importObsServer <- function(id, login, tables) {
                             500,
                             2000
                             )
-==          dbDisconnect(con0)
+          dbDisconnect(con0)
         return(r)
         })%...>%(function(r){
           if(!isTruthy(r$error)){
