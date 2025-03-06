@@ -1,7 +1,11 @@
+# Choices for match type
+
 match_choices_sites <- c(0,1,2,3,4)
 names(match_choices_sites) <- c("All","No matches","Uniquely matched","Ambiguously matched","No grid reference")
 
 match_choices_taxa <- match_choices_sites[1:4]
+
+# Import UI
 
 importRecordsUI <- function(id){
   ns <- NS(id)
@@ -110,6 +114,10 @@ importRecordsUI <- function(id){
                                                              options = list(maxItems = 1,
                                                                             placeholder = "Choose a data source")
                                               ),
+                                              textAreaInput(inputId = ns("import_notes"),
+                                                            label = "Import notes",
+                                                            value = NULL,
+                                                            resize = "vertical"),
                                               actionButton(ns("upload"),"Upload records")
                                               )
                                        )
@@ -130,6 +138,8 @@ importRecordsUI <- function(id){
     )
   )
 }
+
+# Import server
 
 importRecordsServer <- function(id, login, tables) {
   moduleServer(
@@ -203,12 +213,15 @@ importRecordsServer <- function(id, login, tables) {
                         escape = FALSE,
                         rownames = FALSE,
                         selection = 'single',
+                        filter = list(position='top'),
                         colnames <- c(cols, "","valid"),
                         options = list(processing = FALSE,
+                                       dom = 'tlpi',
                                        language = list(zeroRecords = "No records"),
                                        columnDefs = list(
                                          list(visible = FALSE, targets = c(length(cols)+1)),
                                          list(orderable = FALSE, targets = c(length(cols))),
+                                         #list(targets = c(ncol(x1)-2,ncol(x1)-1),searchable = FALSE),
                                          list(width = '60px',targets=c(length(cols)))
                                        )
                                        ,
@@ -231,7 +244,8 @@ importRecordsServer <- function(id, login, tables) {
           x1 <- rv$df[,c(cols,"Buttons","valid")]
         }
         
-        DT::replaceData(proxy1, x1, resetPaging = FALSE, rownames = FALSE)
+        DT::replaceData(proxy1, x1, resetPaging = FALSE, rownames = FALSE) %>%
+          updateFilters(data = x1)
       })
       
       ## Site table ----
@@ -247,8 +261,10 @@ importRecordsServer <- function(id, login, tables) {
           datatable(x2,escape = FALSE,
                     rownames = FALSE,
                     selection = 'single',
+                    filter = list(position='top'),
                     colnames = c(colnames(x2)[1:(ncol(x2)-1)],""),
                     options = list(processing = FALSE,
+                                   dom = 'tlpi',
                                    language = list(zeroRecords = "No sites"),
                                    columnDefs = list(
                                      list(orderable = FALSE, targets = c(ncol(x2)-1)),
@@ -281,11 +297,12 @@ importRecordsServer <- function(id, login, tables) {
         if(input$unmatched1 == 4){
           x2 <- rv$df_s[is.na(rv$df_s$gridref) ,c("site_record","gridref","site_match","subsite","Buttons")]
         }
-        DT::replaceData(proxy2, x2, resetPaging = FALSE, rownames = FALSE)
+        DT::replaceData(proxy2, x2, resetPaging = FALSE, rownames = FALSE) %>%
+          updateFilters(data = x2)
       })
       
       ## Taxon table ----
-      x3 <- data.frame(taxon_record = character(), taxon_match = character(), Buttons = character()
+      x3 <- data.frame(taxon_record = character(), taxon_match = character(), Buttons = character(), match = character()
       )
       
       output$matchTaxaTable <- DT::renderDataTable(
@@ -294,18 +311,23 @@ importRecordsServer <- function(id, login, tables) {
                     escape = FALSE,
                     rownames = FALSE,
                     selection = 'single',
-                    colnames = c(colnames(x3)[1:(ncol(x3)-1)],""),
+                    filter = list(position='top'),
+                    colnames = c(c("taxon_record","taxon_match"),"","match"),
                     options = list(processing = FALSE,
+                                   dom = 'tlpi',
                                    language = list(zeroRecords = "No taxa"),
                                    columnDefs = list(
-                                     list(orderable = FALSE, targets = c(ncol(x3)-1)),
-                                     list(width = '60px',targets=c(ncol(x3)-1))
+                                     list(orderable = FALSE, targets = 2),
+                                     list(visible = FALSE, targets = 3),
+                                     list(width = '60px',targets=c(2))
                                    ),
                                    extensions = c("FixedHeader"),#, "Scroller")
                                    fixedHeader = TRUE,
                                    scrollY = "50vh"
                                    )
-                    )
+                    ) %>% 
+            formatStyle("match",target='row',backgroundColor = styleEqual(0,"rgb(255, 77, 0,0.3)"))  %>% 
+            formatStyle("match",target='row',backgroundColor = styleEqual(2,"rgb(255, 200, 0,0.3)")) 
         }
       )
       
@@ -313,19 +335,24 @@ importRecordsServer <- function(id, login, tables) {
       
       observe({
         req(isTruthy(rv$df_t))
+        
+        x3 <- rv$df_t[,c("taxon_record","taxon_match","Buttons")]
+        x3$match <- apply(rv$df_t[c("tvks_match","length_match")],1,function(x) ifelse(is.na(x[1]),0,ifelse(x[2]==1,1,2)))
+          
         if(input$unmatched2 == 0){
-          x3 <- rv$df_t[,c("taxon_record","taxon_match","Buttons")]
+          x3 <- x3
           }
         if(input$unmatched2 == 1){
-          x3 <- rv$df_t[is.na(rv$df_t$tvks_match),c("taxon_record","taxon_match","Buttons")]
+          x3 <- x3[is.na(rv$df_t$tvks_match),c("taxon_record","taxon_match","Buttons","match")]
         }
         if(input$unmatched2 == 2){
-          x3 <- rv$df_t[which(rv$df_t$length_match == 1),c("taxon_record","taxon_match","Buttons")]
+          x3 <- x3[which(rv$df_t$length_match == 1),c("taxon_record","taxon_match","Buttons","match")]
         }
         if(input$unmatched2 == 3){
-          x3 <- rv$df_t[which(rv$df_t$length_match > 1),c("taxon_record","taxon_match","Buttons")]
+          x3 <- x3[which(rv$df_t$length_match > 1),c("taxon_record","taxon_match","Buttons","match")]
         }
-        DT::replaceData(proxy3, x3, resetPaging = FALSE, rownames = FALSE)
+        DT::replaceData(proxy3, x3, resetPaging = FALSE, rownames = FALSE) %>%
+          updateFilters(data = x3)
       })
 
       # Import csv ----
@@ -345,11 +372,11 @@ importRecordsServer <- function(id, login, tables) {
           # validate input
           d$gridref <- as.character(d$gridref)
           d$gridref <- apply(d[c("gridref")],1,function(g)toupper(gsub(" ","",blank(g))))
-          
           d$site_record <- as.character(d$site_record)
           d$taxon_nbn <- as.character(d$taxon_nbn)
-          d$taxon_record <- as.character(d$taxon_record
-                                         )
+          d$taxon_nbn <- apply(d["taxon_nbn"],1,trimws)
+          d$taxon_record <- as.character(d$taxon_record)
+          d$taxon_record <- apply(d["taxon_record"],1,trimws)
           d[apply(d[c("taxon_nbn")],1,function(x) !isTruthy(x)),c("taxon_nbn")] <- NA
           d$valid <- 
             apply(d[c("gridref",
@@ -440,13 +467,13 @@ importRecordsServer <- function(id, login, tables) {
         
         showSpinner("matchSitesTable")
         ## Match site ----
-        future_promise({
+        
           req(tables$sites0)
           
           site_match <- unique(rv$df[,c("site_record","gridref")])
           d <- site_match
           d$geometry <- st_sfc(d$geometry)
-          d[which(isTruthy(d$gridref)),c("geometry")] <- apply(d[which(isTruthy(d$gridref)),][c("gridref")],1,gf_sf)
+          d[which(!is.na(d$gridref)),]$geometry <- apply(d[which(!is.na(d$gridref)),][c("gridref")],1,gf_sf)
           d <- st_as_sf(d)
           
           st_crs(d) <- st_crs(27700)
@@ -466,12 +493,9 @@ importRecordsServer <- function(id, login, tables) {
           site_match$id <- seq.int(nrow(site_match))
           site_match <- add_edit_del_btns(site_match,"sites")
           
-          return(site_match)
-        })%...>% (function(site_match) {
           rv$df_s <- site_match
+          
           hideSpinner("matchSitesTable")
-        }
-        )
         
         ## Match taxa ----
         showSpinner("matchTaxaTable")
@@ -502,13 +526,16 @@ importRecordsServer <- function(id, login, tables) {
           
           taxon_match$length_match <- apply(taxon_match[c("tvks_match")],1,function(x) length(unlist(x)))
           
-          u <- which(taxon_match$length_match == 1)
-          taxon_match[u,c("tvk_match")] <- apply(taxon_match[u,][c("tvks_match")],1,unlist)
-          taxon_match[u,c("taxon_match")] <- apply(taxon_match[u,][c("taxa_match")],1,unlist)
+          # u <- which(taxon_match$length_match == 1)
+          # taxon_match[u,c("tvk_match")] <- apply(taxon_match[u,][c("tvks_match")],1,unlist)
+          # taxon_match[u,c("taxon_match")] <- apply(taxon_match[u,][c("taxa_match")],1,unlist)
           
-          #taxon_match <- taxon_match[order(taxon_match$taxon_record),]
+          taxon_match[c("tvk_match")] <- apply(taxon_match[c("tvks_match")],1,function(x) unlist(x)[1])
+          taxon_match[c("taxon_match")] <- apply(taxon_match[c("taxa_match")],1,function(x) unlist(x)[1])
+          
           taxon_match$id <- seq.int(nrow(taxon_match))
           taxon_match <- add_edit_del_btns(taxon_match,"taxa")
+          
           return(taxon_match)
           })%...>% (function(taxon_match) {
             rv$df_t <- taxon_match
@@ -518,79 +545,80 @@ importRecordsServer <- function(id, login, tables) {
       
       # DT row buttons ----
       
+      # Reactive to hold matched choices of site / taxa
       match_choices <- reactive({
-        req(rv$dt_row)
-        if(rv$mode == "site"){
-          c <- c("")
-          if(rv$df_s[rv$dt_row,c("length_match")] > 0){
-            c <- unlist(rv$df_s[rv$dt_row,c("ids_match")])
-            names(c) <- unlist(rv$df_s[rv$dt_row,c("sites_match")])
+            req(rv$dt_row)
+            if(rv$mode == "site"){
+              c <- c("")
+              if(rv$df_s[rv$dt_row,c("length_match")] > 0){
+                c <- unlist(rv$df_s[rv$dt_row,c("ids_match")])
+                names(c) <- unlist(rv$df_s[rv$dt_row,c("sites_match")])
+                
+              }
+              if(is.na(rv$df_s[rv$dt_row,c("gridref")])){
+                c <- sites_choices()
+              }
+              
             }
-          if(is.na(rv$df_s[rv$dt_row,c("gridref")])){
-            c <- sites_choices()
-          }
-          return(c)
-        }
-        if(rv$mode == "taxon"){
-          c <- c("")
-          if(rv$df_t[rv$dt_row,c("length_match")] > 0){
-            c <- unlist(rv$df_t[rv$dt_row,c("tvks_match")])
-            names(c) <- unlist(rv$df_t[rv$dt_row,c("taxa_match")])
-          }
-          if(is.na(rv$df_s[rv$dt_row,c("gridref")])){
-            c <- choices_uksi
-          }
-        }
-        
-        return(c)
+            if(rv$mode == "taxon"){
+              c <- c("")
+              if(rv$df_t[rv$dt_row,c("length_match")] > 0){
+                c <- unlist(rv$df_t[rv$dt_row,c("tvks_match")])
+                names(c) <- unlist(rv$df_t[rv$dt_row,c("taxa_match")])
+                
+                c <- c(c, choices_uksi)
+              }
+              if(is.na(rv$df_t[rv$dt_row,c("tvks_match")])){
+                c <- choices_uksi
+              }
+            }
+          
+        c
       })
       
       # Update site choices when gridref changes
       observeEvent(input$match_gridref,{
-        req(isTruthy(input$match_gridref) && isGridref(input$match_gridref))
+        req(isGridref(input$match_gridref))
         req(rv$dt_row)
         req(rv$mode == "site")
         req(input$match_gridref != rv$df_s[rv$dt_row,c("gridref")])
-        g <- st_sfc(gf_sf(input$match_gridref))
-        st_crs(g) <- st_crs(27700)
-        int <- st_intersects(st_buffer(g,10),tables$sites0) # sites within 10m of grid squares
         
-        match_choices() <- sites[unlist(int),c("id")]
-        names(match_choices()) <- sites[unlist(int),c("site")]
+        if(isTruthy(input$match_gridref)){
+          g <- st_sfc(gf_sf(input$match_gridref))
+          st_crs(g) <- st_crs(27700)
+          int <- st_intersects(st_buffer(g,10),tables$sites0) # sites within 10m of grid squares
+          
+          c <- tables$sites[unlist(int),c("id")]
+          names(c) <- tables$sites[unlist(int),c("site")]
+        }else{
+          c <- sites_choices()
+        }
         
-        updateSelectizeInput(session, "site_match", choices = match_choices(), selected = "")
+        updateSelectizeInput(session, "site_match", choices = c, selected = "")
       })
       
-      # sites_match_choices <- reactive({
-      #   req(rv$dt_row)
-      #   req(rv$mode == "site")
-      #   if(rv$df_s[rv$dt_row,c("length_match")] > 0){
-      #     c <- unlist(rv$df_s[rv$dt_row,c("ids_match")])
-      #     names(c) <- unlist(rv$df_s[rv$dt_row,c("sites_match")])
-      #     return(c)
-      #   }
-      #   if(is.na(rv$df_s[rv$dt_row,c("gridref")])){
-      #     return(sites_choices)
-      #   }
-      #     return(c(""))
-      # })
+      # Subsite choices
+      match_subsites <- reactive({
+        req(input$site_match)
+        req(tables$subsites)
+        
+        ss <- tables$subsites[tables$subsites$site == as.numeric(input$site_match),c("id","subsite")]
+        
+        if(nrow(ss) > 0){
+          c <- ss$id
+        names(c) <- ss$subsite
+        }else{
+          c<-c("")
+        }
+        
+        c
+      })
       
-      # Update site choices when gridref changes
-      # observeEvent(input$match_gridref,{
-      #   req(isTruthy(input$match_gridref) && isGridref(input$match_gridref))
-      #   req(rv$dt_row)
-      #   req(rv$mode == "site")
-      #   req(input$match_gridref != rv$df_s[rv$dt_row,c("gridref")])
-      #   g <- st_sfc(gf_sf(input$match_gridref))
-      #   st_crs(g) <- st_crs(27700)
-      #   int <- st_intersects(st_buffer(g,10),sites0) # sites within 10m of grid squares
-      #   
-      #   sites_match_choices() <- sites[unlist(int),c("id")]
-      #   names(sites_match_choices()) <- sites[unlist(int),c("site")]
-      #   
-      #   updateSelectizeInput(session, "site_match", choices = sites_match_choices(), selected = "")
-      # })
+      observeEvent(input$site_match,{
+        updateSelectizeInput(session, "subsite", choices = match_subsites(), selected = "")
+      })
       
+      # Row click event
       observeEvent(input$current_id, {
         # Delete row from df
         if(!is.null(input$current_id) & stringr::str_detect(input$current_id, pattern = "csv_del")){
@@ -782,6 +810,7 @@ importRecordsServer <- function(id, login, tables) {
           
           s <- ifelse(rv$df_s[rv$dt_row,c("length_match")] == 1,rv$df_s[rv$dt_row,c("id_match")],"")
           edit_df_s_row(session,rv$df_s[rv$dt_row,c("site_record","gridref")],match_choices(), s)
+          updateSelectizeInput(session, "subsite", choices = match_subsites(), selected = "")
           
           # validation
           iv <- InputValidator$new()
@@ -816,14 +845,20 @@ importRecordsServer <- function(id, login, tables) {
           rv$dt_row <- which(stringr::str_detect(rv$df_t$Buttons, pattern = paste0("\\b", input$current_id, "\\b")))
           rv$mode <- "taxon"
           
-          t <- ifelse(rv$df_t[rv$dt_row,c("length_match")] == 1,rv$df_t[rv$dt_row,c("tvk_match")],"")
           edit_df_t_row(session,rv$df_t[rv$dt_row,c("taxon_record")])
           
-          updateSelectizeInput(session, "tvk_match", 
-                               choices = match_choices(), 
-                               server = TRUE,
-                               selected = t)
-          
+          if(!is.na(rv$df_t[rv$dt_row,c("tvk_match")])){
+            updateSelectizeInput(session, "tvk_match", 
+                                 choices = match_choices(), 
+                                 server = TRUE,
+                                 selected = rv$df_t[rv$dt_row,c("tvk_match")])
+          }else{
+            updateSelectizeInput(session, "tvk_match", 
+                                 choices = choices_uksi, 
+                                 server = TRUE,
+                                 selected = "")
+          }
+
           shinyjs::disable("match_taxon_record")
           
           # Validation
@@ -976,14 +1011,16 @@ importRecordsServer <- function(id, login, tables) {
       
       choices_surveys <- reactive({
         if(isTruthy(tables$surveys)){
-          c <- tables$surveys$id
-          names(c) <- tables$surveys$survey
+          open <- tables$surveys[tables$surveys$status == "open",]
+          c <- open$id
+          names(c) <- open$survey
         }
         else{
           c <- c("")
         }
         return(c)
       })
+      
       
       observe({
         updateSelectizeInput(session, "survey", choices = choices_surveys(), selected = "")
@@ -992,7 +1029,9 @@ importRecordsServer <- function(id, login, tables) {
       shinyjs::disable("upload")
       
       observe({
-        if(isTruthy(input$survey) 
+        req(rv$df)
+        req(input$survey)
+        if(sum(rv$df$valid) == nrow(rv$df)
            ){
           shinyjs::enable("upload")
         }else{
@@ -1034,7 +1073,7 @@ importRecordsServer <- function(id, login, tables) {
         
         d <- rv$df[,c(cols_upload,"taxon_record")]
         
-       future_promise({
+       
           # Format data for upload
           
           d$record_date <- as.Date(d$record_date, "%d/%m/%y")
@@ -1054,26 +1093,47 @@ importRecordsServer <- function(id, login, tables) {
                                join_by(site_record, gridref), na_matches = "na")
           
           d$site <- as.numeric(s$id_match)
-
+          
           t <- d %>% left_join(rv$df_t,
                                join_by(taxon_record,taxon_nbn), na_matches = "na")        
           d$taxon_nbn <- t$tvk_match
-
+          
           d <- d[,c(cols_upload,"site","survey")]
           d <- d[!is.na(d$site) & !is.na(d$taxon_nbn),] # Drop unmatched sites and taxa
+          
+          future_promise({
+          
           con <- fenDb0(user,password)
 
-          i <- pgWriteGeom(con,
-                           name = c("records","records"),
-                           data.obj = d,
-                           partial.match = TRUE,
-                           overwrite = FALSE
-                           )
+          # IMPORT RECORDS
+          i <- import_table(con,
+                       "records",
+                       "records",
+                       2,
+                       postgresqlEscapeStrings(con,input$import), # file name imported from
+                       postgresqlEscapeStrings(con,input$import_notes),
+                       FALSE,
+                       FALSE,
+                       d,
+                       NULL, # don't need geometry or attachment parameters
+                       NULL,
+                       NULL)
+          
           dbDisconnect(con)
           return(i)
-        })%...>% (function(i) {
-
-          if(i == TRUE){
+          })%...>%(function(i){
+          
+          if(isTruthy(i$error) || !isTruthy(i$output)){
+            showModal(
+              modalDialog(
+                div(style="text-align:center",
+                    tags$h4("Fail!"),
+                    p("Record upload failed. No records uploaded.")
+                )
+                ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
+              )
+            )
+          }else{
             showModal(
               modalDialog(
                 div(style="text-align:center",
@@ -1084,21 +1144,11 @@ importRecordsServer <- function(id, login, tables) {
               )
             )
           }
-          if(i == FALSE){
-            showModal(
-              modalDialog(
-                div(style="text-align:center",
-                    tags$h4("Fail!"),
-                    p("Record upload failed. No records uploaded.")
-                )
-                ,footer=NULL,size="s",easyClose=TRUE,fade=TRUE
-              )
-            )
-          }
-        })
+          })
+        
       })
       
-      # Other stuff ----
+      # Options ----
       
       outputOptions(output, "matchSitesTable", suspendWhenHidden = FALSE)
       outputOptions(output, "matchTaxaTable", suspendWhenHidden = FALSE)
