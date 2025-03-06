@@ -5,7 +5,7 @@ function(input, output, session) {
   #Session reactives----
 
   # Login reactive
-  login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, admin = NA, con = NA)
+  login <- reactiveValues(username = NA, password = NA, test = NA, role = NA, admin = NA)
   
   
   
