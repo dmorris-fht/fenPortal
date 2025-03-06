@@ -80,11 +80,11 @@ loginServer <- function(id, login) {
           login$password <- input$password
           login$admin <- FALSE
           login$test <- TRUE
-          login$con <- fenDb(input$username, input$password)
+          con <- fenDb0(input$username, input$password)
           
-          roles <- dbGetQuery(login$con, paste0("SELECT rolname FROM pg_roles WHERE
+          roles <- dbGetQuery(con, paste0("SELECT rolname FROM pg_roles WHERE
                          pg_has_role( '", input$username ,"', oid, 'member')"))
-
+          dbDisconnect(con)
           if("azure_pg_admin" %in% roles$rolname){
             login$role <- "cru"
             login$admin <- TRUE
