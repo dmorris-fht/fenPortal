@@ -180,7 +180,7 @@ edit_df_row <- function(session,r){
   ) %>% showModal()
 }
 
-edit_df_s_row <- function(session,r, choices, s){
+edit_df_s_row <- function(session,r, s_choices, s, ss_choices){
   ns <- session$ns
   modalDialog(
     column(6,
@@ -201,7 +201,7 @@ edit_df_s_row <- function(session,r, choices, s){
            div(style="float:left;width:90%",
                selectizeInput(ns("site_match"),
                               label = "site_match",
-                              choices = choices,
+                              choices = s_choices,
                               selected = s,
                               multiple = TRUE,
                               options = list(maxItems = 1)
