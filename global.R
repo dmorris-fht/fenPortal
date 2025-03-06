@@ -765,13 +765,13 @@ fetch_agol <- function( url, where, geometry, attachments){
 
 # Import to table function ----
 
-null_val <- function(con,y){
-  x <- trimws(y)
+null_val <- function(con,x){
   if(!isTruthy(x)){
     return('NULL')
   }
   if(is.POSIXct(x)){
-    return(null_timestamp_val(x))
+    return(as.character(x))
+    #return(null_timestamp_val(x))
   }
   if(is.UUID(x)){
     return(paste0("'",as.UUID(x),"'"))
@@ -783,7 +783,6 @@ null_val <- function(con,y){
     return(null_text_val(con,x))
   }
 }
-
 
 import_table <- function(con,
                          schema,
@@ -817,22 +816,6 @@ import_table <- function(con,
     return(r)
   }
   
-  if("guid" %in% colnames(data)){
-    # Skip existing rows in target table
-    guid <- dbGetQuery(con,paste0("SELECT guid::varchar FROM ",schema,".",table," WHERE guid IN ",con_sql_string(data$guid)))
-      if(isTruthy(guid) & nrow(guid) > 0 ){
-        if(nrow(guid) == nrow(data)){
-          r$error <- "Data already in database"
-          return(r)
-        }else{
-          data <- data[which(!(as.character(data$guid) %in% guid$guid)),]
-          if(import_attach){
-            attach <- attach[which(!(as.character(attach$rel_guid) %in% guid$guid)),]
-          }
-        }
-      }
-  }
-
   # Import insert string
   q0 <- paste0("INSERT INTO records.imports (source_type,source,notes,source_attachments,schema,table_name) VALUES (",
                import_type,",",
@@ -842,6 +825,8 @@ import_table <- function(con,
                paste0("'",schema,"'"),",",
                paste0("'",table,"'"),
                ") RETURNING id")
+  
+  imp <- dbGetQuery(con,q0)$id
   
   # Handle geometry column
   if(import_geometry){
@@ -855,38 +840,33 @@ import_table <- function(con,
     }
   }
   
-  # Target table insert string - 1st chunk
-  q1 <- paste0("WITH imp AS (",q0,") \n ",
-               "INSERT INTO ",schema,".",table," (",paste(import_cols,collapse = ","),",import) VALUES \n "
-               )
-  
-  # Target table insert string 2nd chunk - case 1
+  # Target table values for insert - without geom
   if(!import_geometry){
-    data$Q <- apply(data[,import_cols],1,function(d){
-      paste0("(",
-             paste(lapply(d,function(x){null_val(con,x)}),collapse=","),
-             ",(SELECT id FROM imp))"
-      )
-    })
+    # Parse rows of data into tuples
+    d_parse <-  paste(
+      "(",
+      apply(
+        apply(data[import_cols],c(1,2),function(x) null_val(con,x))
+        ,1,function(x) paste(x,collapse=","))
+      ,
+      ",",imp,")"
+    )
   }
   
-  # Target table insert string 2nd chunk - case 2
+  # Target table values for insert - with geom
   if(import_geometry){
-    data$Q <- 
+    # Parse rows of data into tuples
+    d_parse <- 
       paste(
         paste("(",
                "ST_GeomFromText('", data$geom, "',27700),",sep=""),
-        apply(data[import_cols[2:length(import_cols)]],1,function(d){
-                   paste(lapply(d,function(x){
-                     null_val(con,x)
-                   }),collapse=",")
-                 }),
-        ",(SELECT id FROM imp))"
+        apply(apply(data[import_cols[2:length(import_cols)]],c(1,2),function(x) null_val(con,x)),1,function(x) paste(x,collapse=",")),
+        ",",imp,")"
                )
       }
   
-  Q <- paste(data$Q,collapse = ", \n ")
-  
+
+  # Form the insert string with and without attachments
   if(import_attach & isTruthy(attach)){
     
     q_att <- paste0("INSERT INTO ",schema,".",table,"_attach (guid,rel_guid,att_type,att_name,att_size,att) VALUES \n")
@@ -930,22 +910,46 @@ import_table <- function(con,
       "WITH imp AS (",q0,"), \n",
       "tab AS (
                     INSERT INTO ",schema,".",table," (",paste(import_cols,collapse = ","),",import) VALUES \n "
-      , Q,
+      , paste(d_parse,collapse = ", \n "),
       " ON CONFLICT (guid) DO NOTHING \n 
                  RETURNING guid",
       ") \n ",
       q_att, 
       paste(Q_att,collapse = ", \n "),
-      " \n ON CONFLICT (guid) DO NOTHING"
+      " \n ON CONFLICT (guid) DO NOTHING; "
     )
   }else{
-    q3 <- paste0(q1,paste(Q,collapse = ", \n "),
-                 " RETURNING (SELECT id FROM imp);")
-  }
+    # Target table insert string - 1st chunk
+    q1 <- paste0("INSERT INTO ", schema,".",table ," (",paste(import_cols,collapse = ","),",import) VALUES \n ")
+    
+    if("guid" %in% colnames(data)){
+      q1 <- pasteo(q1," \n ON CONFLICT (guid) DO NOTHING;")
+    }
+
+    # BATCH THE INSERT INTO BATCHES OF SIZE N = 2000
+    n<-2000
+    max <- ceiling(nrow(d) / n)
+    q3 <- NULL
+    
+    for(i in 1:max){
+      d_parse_0 <- d_parse[((i-1)*n):(min(nrow(d),(i*n)))]
+    
+      Q <- paste(d_parse_0,collapse = ", \n ")
       
+      q1 <- paste0(
+        "INSERT INTO ", schema,".",table ," (",paste(import_cols,collapse = ","),",import) VALUES \n "
+      ) 
+      
+      q3 <- paste0(q3,"BEGIN; \n ",q1,paste(Q,collapse = ", \n "),
+                   "; \n COMMIT; \n ")
+      }
+    }
+  
       r$output <- dbGetQuery(con,q3)
       return(r)
     }
+
+
 
 import_agol <- function(con, 
                         u, # service url
