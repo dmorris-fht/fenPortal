@@ -121,51 +121,58 @@ edit_df_row <- function(session,r){
         ,
     column(6,
            div(style="float:left;width:90%",
+               textInput(inputId = ns("record_year"),
+                         labe = "record_year",
+                         value = ifelse(!is.na(r[19]),r[19],"")
+               )))
+    ,
+    column(6,
+           div(style="float:left;width:90%",
         textInput(inputId = ns("record_date_start"),
                   label = "record_date_start",
-                  value = ifelse(!is.na(r[16]),r[16],"")
+                  value = ifelse(!is.na(r[17]),r[17],"")
                   )))
         ,
     column(6,
            div(style="float:left;width:90%",
                textInput(inputId = ns("record_date_end"),
                   label = "record_date_end",
-                  value = ifelse(!is.na(r[17]),r[17],"")
+                  value = ifelse(!is.na(r[18]),r[18],"")
                   )))
         ,
     column(6,
            div(style="float:left;width:90%",
                textInput(inputId = ns("start_year"),
                      labe = "start_year",
-                     value = ifelse(!is.na(r[18]),r[18],"")
+                     value = ifelse(!is.na(r[19]),r[19],"")
                      )))
         ,
     column(6,
            div(style="float:left;width:90%",
                textInput(inputId = ns("end_year"),
                      labe = "end_year",
-                     value = ifelse(!is.na(r[19]),r[19],"")
+                     value = ifelse(!is.na(r[20]),r[20],"")
                      )))
         ,
     column(6,
            div(style="float:left;width:90%",
                textInput(inputId = ns("start_month"),
                      labe = "start_month",
-                     value = ifelse(!is.na(r[20]),r[20],"")
+                     value = ifelse(!is.na(r[21]),r[21],"")
                      )))
         ,
     column(6,
            div(style="float:left;width:90%",
                textInput(inputId = ns("end_month"),
                      labe = "end_month",
-                     value = ifelse(!is.na(r[21]),r[21],"")
+                     value = ifelse(!is.na(r[22]),r[22],"")
                      )))
         ,
     column(6,
            div(style="float:left;width:90%",
         textInput(inputId =  ns("origin_key"),
                   label = "origin_key",
-                  value = ifelse(!is.na(r[22]),r[22],"")
+                  value = ifelse(!is.na(r[23]),r[23],"")
         )))
     
     , size="m",easyClose= TRUE,fade=TRUE,
