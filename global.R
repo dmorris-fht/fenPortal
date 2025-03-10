@@ -1259,9 +1259,7 @@ uksi_pl_rec <- NULL
 choices_uksi <- NULL
 choices_uksi_1 <- NULL
 choices_uksi_plants <- NULL
-choices_fspp <- NULL
 string_fspp <- NULL
-choices_afspp <- NULL
 string_afspp <- NULL
 fspp <- NULL
 
@@ -1290,17 +1288,15 @@ uksi_load <- function(x){
     choices_uksi_plants <<- uksi_pl_rec$nbn_taxon_version_key
     names(choices_uksi_plants) <<- uksi_pl_rec$full_name
   }
-  if(3 %in% x && !isTruthy(choices_fspp) && !isTruthy(choices_afspp)){
+  if(3 %in% x){
     if(!isTruthy(fspp)){
       fspp <<- read.csv("./www/fen_spp.csv",header = TRUE, encoding = "UTF-8")
     }
-    # Fen plant spp
-    choices_fspp <<- fspp$nbn_taxon_version_key_for_recommended_name
-    names(choices_fspp) <<- fspp$taxon_latest
-    string_fspp <<- paste0("('",paste(choices_fspp,collapse="','"),"')")
     
-    choices_afspp <<- choices_fspp[which(fspp$alkaline_fen == TRUE)]
-    string_afspp <<- paste0("('",paste(choices_afspp,collapse="','"),"')")
+    string_fspp <<- paste0("('",paste(fspp$nbn_taxon_version_key_for_recommended_name,collapse="','"),"')")
+    
+    string_afspp <<- fspp[which(fspp$alkaline_fen == TRUE),"nbn_taxon_version_key_for_recommended_name"]
+    string_afspp <<- paste0("('",paste(string_afspp,collapse="','"),"')")
   }
 }
 
@@ -1344,6 +1340,9 @@ global_records <- data.frame(
     "habitat" = character(),
     "note" = character(),
     "record_date" = Date(),
+    "record_year" = numeric(),
+    "record_month" = numeric(),
+    "record_date_start" = Date(),
     "record_date_end" = Date(),
     "recorder" = character(),
     "determiner" = character(),
