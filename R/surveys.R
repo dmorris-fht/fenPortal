@@ -99,11 +99,15 @@ surveyServer <- function(id, login, tables) {
         rv$p <- tables$projects[order(tables$projects$project),]
       })
       
-      #Create data table ----
+      # Create data table ----
       
       output$surveysTable <- DT::renderDataTable(
         {
           x <- data.frame(survey = character(), range = character(), project = character(), survey_type_description = character(),status = character(),Buttons = character())
+          x$project <- factor(x$project )
+          x$survey_type_description <- factor(x$survey_type_description )
+          x$status <- factor(x$status )
+          
           DT::datatable(
             x
             ,
@@ -154,6 +158,10 @@ surveyServer <- function(id, login, tables) {
         x$year_1 <- pmax(year(x$end_date),x$end_year,na.rm=T)
         x$range <- apply(x[,c("year_0","year_1")],1,year_range)
         d <- x[,c("survey","range","project","survey_type_description","status","Buttons")]
+        
+        d$project <- factor(d$project )
+        d$survey_type_description <- factor(d$survey_type_description )
+        d$status <- factor(d$status )
         
         proxy %>% 
           DT::replaceData(data = d, resetPaging = FALSE, rownames = FALSE) %>%
