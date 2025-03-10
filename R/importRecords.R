@@ -202,7 +202,7 @@ importRecordsServer <- function(id, login, tables) {
                 "taxon_record",
                 "quantity","status","sex","stage","habitat","note",
                 "recorder","determiner","method","sample",
-                "record_date","record_date_start","record_date_end","start_year","end_year","start_month","end_month",
+                "record_date","record_year","record_date_start","record_date_end","start_year","end_year","start_month","end_month",
                 "origin_key"
                 )
       
@@ -381,6 +381,7 @@ importRecordsServer <- function(id, login, tables) {
           d$valid <- 
             apply(d[c("gridref",
                                "record_date",
+                                "record_year",
                                "record_date_start",
                                "record_date_end",
                                "start_year",
@@ -673,6 +674,12 @@ importRecordsServer <- function(id, login, tables) {
             }
           })
           
+          iv$add_rule("record_year",function(value){
+            if(!year_check(input$record_year)){
+              return("Invalid year")
+            }
+          })
+          
           iv$add_rule("record_date_start",function(value){
             if(!(IsDate(input$record_date_start) || !isTruthy(input$record_date_start))){
               return("Invalid date format")
@@ -762,6 +769,7 @@ importRecordsServer <- function(id, login, tables) {
               import_validation(c(
               blank(input$gridref),
               blank(input$record_date),
+              blank(input$record_year),
               blank(input$record_date_start),
               blank(input$record_date_end),
               blank(input$start_year),
@@ -778,6 +786,7 @@ importRecordsServer <- function(id, login, tables) {
               import_validation(c(
                 blank(input$gridref),
                 blank(input$record_date),
+                blank(input$record_year),
                 blank(input$record_date_start),
                 blank(input$record_date_end),
                 blank(input$start_year),
@@ -901,6 +910,7 @@ importRecordsServer <- function(id, login, tables) {
         req(import_validation(c(
           input$gridref,
           input$record_date,
+          input$record_year,
           input$record_date_start,
           input$record_date_end,
           input$start_year,
@@ -929,6 +939,7 @@ importRecordsServer <- function(id, login, tables) {
                 "method",
                 "sample",
                 "record_date",
+                "record_year",
                 "record_date_start",
                 "record_date_end",
                 "start_year",
@@ -952,6 +963,7 @@ importRecordsServer <- function(id, login, tables) {
                   blank(input$method),
                   blank(input$sample),
                   blank(input$record_date),
+                  blank(input$record_year),
                   blank(input$record_date_start),
                   blank(input$record_date_end),
                   blank(input$start_year),
@@ -1067,7 +1079,7 @@ importRecordsServer <- function(id, login, tables) {
                          "taxon_nbn",
                          "quantity","status","sex","stage","habitat","note",
                          "recorder","determiner","method","sample",
-                         "record_date","record_date_start","record_date_end",
+                         "record_date","record_year","record_date_start","record_date_end",
                          "start_year","end_year","start_month","end_month",
                          "origin_key")
         
@@ -1077,6 +1089,7 @@ importRecordsServer <- function(id, login, tables) {
           # Format data for upload
           
           d$record_date <- as.Date(d$record_date, "%d/%m/%y")
+          d$recordyear <- as.numeric(d$record_year)
           d$record_date_start <- as.Date(d$record_date_start, "%d/%m/%y")
           d$record_date_end <- as.Date(d$record_date_end, "%d/%m/%y")
           d$start_year <- as.numeric(d$start_year)
