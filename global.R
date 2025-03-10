@@ -495,17 +495,20 @@ import_validation <- function(x){
   prod(
     isGridref(x[[1]]) || !isTruthy(x[[1]]), # gridref
     IsDate(x[[2]]) || !isTruthy(x[[2]]), # date
-    IsDate(x[[3]]) || !isTruthy(x[[3]]), # start date
-    IsDate(x[[4]]) || !isTruthy(x[[4]]), # end date
-    (IsDate(x[[3]]) && IsDate(x[[4]]) && (as.Date(x[[3]], "%d/%m/%Y") <= as.Date(x[[4]], "%d/%m/%Y"))) || !isTruthy(x[[3]]) || !isTruthy(x[[4]]), # date range
-    year_check(x[[5]]), # start year
-    year_check(x[[6]]), # end year
-    (year_check(x[[5]]) && year_check(x[[6]]) && as.numeric(x[[5]]) <= as.numeric(x[[6]])) || !isTruthy(x[[5]]) || !isTruthy(x[[6]]), # year range
-    month_check(x[[7]]), # start month
-    month_check(x[[8]]), # end month
-    (month_check(x[[7]]) && month_check(x[[8]]) && ( (x[[5]] == x[[6]] && as.numeric(x[[7]]) <= as.numeric(x[[8]])) ||  x[[5]] != x[[6]] ) ) || !isTruthy(x[[7]]) || !isTruthy(x[[8]]), # month range
-    isTruthy(x[[1]]) || isTruthy(x[[9]]), # gridref and site not both null
-    isTruthy(x[[10]]) || isTruthy(x[[11]]) # nbn tvk or taxon name given
+    
+    year_check(x[[3]]), # record year
+    
+    IsDate(x[[4]]) || !isTruthy(x[[4]]), # start date
+    IsDate(x[[5]]) || !isTruthy(x[[5]]), # end date
+    (IsDate(x[[4]]) && IsDate(x[[5]]) && (as.Date(x[[4]], "%d/%m/%Y") <= as.Date(x[[5]], "%d/%m/%Y"))) || !isTruthy(x[[4]]) || !isTruthy(x[[5]]), # date range
+    year_check(x[[6]]), # start year
+    year_check(x[[7]]), # end year
+    (year_check(x[[6]]) && year_check(x[[7]]) && as.numeric(x[[6]]) <= as.numeric(x[[7]])) || !isTruthy(x[[6]]) || !isTruthy(x[[7]]), # year range
+    month_check(x[[8]]), # start month
+    month_check(x[[9]]), # end month
+    (month_check(x[[8]]) && month_check(x[[9]]) && ( (x[[6]] == x[[7]] && as.numeric(x[[8]]) <= as.numeric(x[[9]])) ||  x[[6]] != x[[7]] ) ) || !isTruthy(x[[8]]) || !isTruthy(x[[9]]), # month range
+    isTruthy(x[[1]]) || isTruthy(x[[10]]), # gridref and site not both null
+    isTruthy(x[[11]]) || isTruthy(x[[12]]) # nbn tvk or taxon name given
     )
 }
 
