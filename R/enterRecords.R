@@ -264,6 +264,7 @@ enterRecordsUI <- function(id){
                   
                   
                   column(12,style="padding:0",
+                         # RECORD DATE
                          column(4,style="padding:0",
                                 div(
                                   div(style="float:left",
@@ -274,13 +275,69 @@ enterRecordsUI <- function(id){
                                   div(style="float:left;width:70%",
                                       dateInput(
                                         inputId = ns("record_date"),
-                                        label = "Start date",
+                                        label = "Record date",
                                         value = NA,
                                         format = "yyyy-mm-dd"
                                       ) %>% tagAppendAttributes(class = 'compact')
                                   )
                                 ) 
                          ),
+                         
+                         column(4,style="padding:0",
+                                div(
+                                  div(style="float:left",
+                                      checkboxInput(
+                                        inputId = ns("record_year_check"), value = FALSE, label = NULL
+                                      ) %>% tagAppendAttributes(class = 'compact')
+                                  ),
+                                  div(style="float:left;width:70%",
+                                      numericInput(
+                                        inputId = ns("record_year"),
+                                        label = "Record year",
+                                        value = NULL,
+                                        min = 1600, max = 3000, step = 1
+                                      ) %>% tagAppendAttributes(class = 'compact')
+                                  )
+                                ) 
+                         ), 
+                         column(4,style="padding:0",
+                                div(
+                                  div(style="float:left",
+                                      checkboxInput(
+                                        inputId = ns("record_month_check"), value = FALSE, label = NULL
+                                      ) %>% tagAppendAttributes(class = 'compact')
+                                  ),
+                                  div(style="float:left;width:70%",
+                                      numericInput(
+                                        inputId = ns("record_month"),
+                                        label = "Record month",
+                                        value = NULL,
+                                        min = 1, max = 12, step = 1
+                                      ) %>% tagAppendAttributes(class = 'compact')
+                                  )
+                                ) 
+                         ), 
+                         
+                         
+                         # RECORD START
+                         column(4,style="padding:0",
+                                div(
+                                  div(style="float:left",
+                                      checkboxInput(
+                                        inputId = ns("record_date_start_check"), value = FALSE, label = NULL
+                                      ) %>% tagAppendAttributes(class = 'compact')
+                                  ),
+                                  div(style="float:left;width:70%",
+                                      dateInput(
+                                        inputId = ns("record_date_start"),
+                                        label = "Start date",
+                                        value = NA,
+                                        format = "yyyy-mm-dd"
+                                      ) %>% tagAppendAttributes(class = 'compact')
+                                  )
+                                ) 
+                         ), 
+                         
                          column(4,style="padding:0",
                                 div(
                                   div(style="float:left",
@@ -317,7 +374,7 @@ enterRecordsUI <- function(id){
                          )
                          ,
                          
-                         
+                         # RECORD END
                          column(4,style="padding:0",
                                 div(
                                   div(style="float:left",
@@ -737,6 +794,30 @@ enterRecordsServer <- function(id, login, tables, tab) {
           shinyjs::disable('record_date')
           updateDateInput(session,'record_date',value = input$record_date)}
       })
+      observeEvent(input$record_year_check,{
+        if(input$record_year_check == 0){
+          shinyjs::enable('record_year')
+        }
+        if(input$record_year_check == 1){
+          shinyjs::disable('record_year')
+          updateDateInput(session,'record_year',value = input$record_year)}
+      })
+      observeEvent(input$record_month_check,{
+        if(input$record_month_check == 0){
+          shinyjs::enable('record_month')
+        }
+        if(input$record_month_check == 1){
+          shinyjs::disable('record_month')
+          updateDateInput(session,'record_month',value = input$record_month)}
+      })
+      observeEvent(input$record_date_start_check,{
+        if(input$record_date_start_check == 0){
+          shinyjs::enable('record_date_start')
+        }
+        if(input$record_date_start_check == 1){
+          shinyjs::disable('record_date_start')
+          updateDateInput(session,'record_date_start',value = input$record_date_start)}
+      })
       observeEvent(input$record_date_end_check,{
         if(input$record_date_end_check == 0){
           shinyjs::enable('record_date_end')
@@ -912,6 +993,11 @@ enterRecordsServer <- function(id, login, tables, tab) {
           updateTextInput(session,'stage', value = d$data[a,c('stage')])
           updateTextInput(session,'note', value = d$data[a,c('note')])
           updateDateInput(session,'record_date', value = d$data[a,c('record_date')])
+          
+          updateDateInput(session,'record_year', value = d$data[a,c('record_year')])
+          updateDateInput(session,'record_month', value = d$data[a,c('record_month')])
+          
+          updateDateInput(session,'record_date_start', value = d$data[a,c('record_date_start')])
           updateDateInput(session,'record_date_end', value = d$data[a,c('record_date_end')])
           updateTextInput(session,'recorder', value = d$data[a,c('recorder')])
           updateTextInput(session,'determiner', value = d$data[a,c('determiner')])
@@ -934,6 +1020,9 @@ enterRecordsServer <- function(id, login, tables, tab) {
           updateCheckboxInput(session,'stage_check',value = 0)
           updateCheckboxInput(session,'note_check',value = 0)
           updateCheckboxInput(session,'record_date_check',value = 0)
+          updateCheckboxInput(session,'record_year_check',value = 0)
+          updateCheckboxInput(session,'record_month_check',value = 0)
+          updateCheckboxInput(session,'record_date_start_check',value = 0)
           updateCheckboxInput(session,'record_date_end_check',value = 0)
           updateCheckboxInput(session,'recorder_check',value = 0)
           updateCheckboxInput(session,'determiner_check',value = 0)
@@ -988,6 +1077,9 @@ enterRecordsServer <- function(id, login, tables, tab) {
           d$data[a,c("stage")] <- blank(input$stage)
           d$data[a,c("note")] <- blank(input$note) 
           d$data[a,c("record_date")] <- input$record_date
+          d$data[a,c("record_year")] <- input$record_year
+          d$data[a,c("record_month")] <- input$record_month
+          d$data[a,c("record_date_start")] <- input$record_date_start
           d$data[a,c("record_date_end")] <- input$record_date_end
           d$data[a,c("recorder")] <- blank(input$recorder) 
           d$data[a,c("determiner")] <- blank(input$determiner) 
@@ -1023,6 +1115,9 @@ enterRecordsServer <- function(id, login, tables, tab) {
           d$data[a,c("stage")] <- blank(input$stage)
           d$data[a,c("note")] <- blank(input$note) 
           d$data[a,c("record_date")] <- input$record_date
+          d$data[a,c("record_year")] <- input$record_year
+          d$data[a,c("record_month")] <- input$record_month
+          d$data[a,c("record_date_start")] <- input$record_date_start
           d$data[a,c("record_date_end")] <- input$record_date_end
           d$data[a,c("recorder")] <- blank(input$recorder) 
           d$data[a,c("determiner")] <- blank(input$determiner) 
@@ -1084,6 +1179,15 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$record_date_check == 0){
           updateDateInput(session,'record_date',value =NA)
+        }
+        if(input$record_year_check == 0){
+          updateDateInput(session,'record_year',value =NA)
+        }
+        if(input$record_month_check == 0){
+          updateDateInput(session,'record_month',value =NA)
+        }
+        if(input$record_date_start_check == 0){
+          updateDateInput(session,'record_date_start',value =NA)
         }
         if(input$record_date_end_check == 0){
           updateDateInput(session,'record_date_end',value =NA)
@@ -1295,7 +1399,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
           })
         })
       
-      # Cache record table in global object ----
+      # Save record table in global object ----
       
       observe({
         x <- d$data
