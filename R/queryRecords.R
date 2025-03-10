@@ -1,3 +1,6 @@
+choices_fspp <- c("","f","a")
+names(choices_fspp) <- c("","Fen species","Alkaline fen species")
+
 queryRecordsUI <- function(id){
   ns <- NS(id)
   tagList(
@@ -1515,11 +1518,11 @@ queryRecordsServer <- function(id, login, tables) {
                 )
           
           # WHERE clause for fen spp
-          if(input$fenspp > 0){
-            if(input$fenspp == 1){
+          if(input$fenspp != ""){
+            if(input$fenspp == "f"){
               w_fenspp <- paste0("u.nbn_taxon_version_key_for_recommended_name IN ", string_fspp)
             }
-            if(input$fenspp == 2){
+            if(input$fenspp == "a"){
               w_fenspp <- paste0("u.nbn_taxon_version_key_for_recommended_name IN ", string_afspp)
             }
           }else{
