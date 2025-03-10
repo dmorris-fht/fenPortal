@@ -370,7 +370,7 @@ queryRecordsServer <- function(id, login, tables) {
       sites1 <- reactive({
         req(tables$sites)
         return(
-          tables$sites0 %>% filter(!st_is_empty(.)) %>% st_transform(crs = 4326) # Filter out empty geoms and transform to 4326
+          tables$sites0 %>% filter(!st_is_empty(.) & st_geometry_type(.) != "POINT") %>% st_transform(crs = 4326) # Filter out empty geoms and transform to 4326
         )
       })
       
