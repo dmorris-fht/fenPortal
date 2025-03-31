@@ -844,6 +844,8 @@ queryRecordsServer <- function(id, login, tables) {
           survey_end_year = numeric(),
           verification_description = character(),
           record_date_start = Date(),
+          record_year = numeric(),
+          record_month = numeric(),
           Buttons = character()
         ),
         dt_row = NULL, add_or_edit = 0,
@@ -1707,7 +1709,7 @@ queryRecordsServer <- function(id, login, tables) {
                      c("taxon_nbn","taxon_name","taxon_authority","taxon_qualifier",
                      "site_name","site_record","subsite_name","gridref",
                      "quantity","status","sex","stage","note",
-                     "record_date","record_date_end","start_year","end_year","start_month","end_month",
+                     "record_date","record_year","record_date_start","record_date_end","start_year","end_year","start_month","end_month",
                      "recorder","determiner","method","survey_name",
                      "verification_description","verification_user","verification_date","verification_note",
                      "guid",

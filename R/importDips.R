@@ -460,7 +460,7 @@ dipsImportServer <- function(id,login,tables) {
             dbDisconnect(con0)
             return(r)
           })%...>%(function(r){
-            if(isTruthy(r$error)){
+            if(isTruthy(r$error) || !isTruthy(r$output)){
               showModal(import_error_modal())
             }else{
               removeModal()

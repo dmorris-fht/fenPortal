@@ -769,6 +769,9 @@ fetch_agol <- function( url, where, geometry, attachments){
 # Import to table function ----
 
 null_val <- function(con,x){
+  x <- trimws(x) # TRIMMING CAN MAKE THIS FUNCTION VERY SLOW WHEN APPLIED TO WHOLE DATASETS
+  
+  
   if(!isTruthy(x)){
     return('NULL')
   }
@@ -923,19 +926,16 @@ import_table <- function(con,
     )
   }else{
     # Target table insert string - 1st chunk
-    q1 <- paste0("INSERT INTO ", schema,".",table ," (",paste(import_cols,collapse = ","),",import) VALUES \n ")
+
     
-    if("guid" %in% colnames(data)){
-      q1 <- pasteo(q1," \n ON CONFLICT (guid) DO NOTHING;")
-    }
 
     # BATCH THE INSERT INTO BATCHES OF SIZE N = 2000
     n<-2000
-    max <- ceiling(nrow(d) / n)
+    max <- ceiling(nrow(data) / n)
     q3 <- NULL
-    
+
     for(i in 1:max){
-      d_parse_0 <- d_parse[((i-1)*n):(min(nrow(d),(i*n)))]
+      d_parse_0 <- d_parse[(1+(i-1)*n):(min(nrow(data),(i*n)))]
     
       Q <- paste(d_parse_0,collapse = ", \n ")
       
@@ -943,11 +943,16 @@ import_table <- function(con,
         "INSERT INTO ", schema,".",table ," (",paste(import_cols,collapse = ","),",import) VALUES \n "
       ) 
       
-      q3 <- paste0(q3,"BEGIN; \n ",q1,paste(Q,collapse = ", \n "),
-                   "; \n COMMIT; \n ")
+      q3 <- paste0(q3,"BEGIN; \n ",q1,paste(Q,collapse = ", \n "))
+      
+      if("guid" %in% colnames(data)){
+        q3 <- paste0(q3," \n ON CONFLICT (guid) DO NOTHING; \n COMMIT; \n ")
+      }else{
+        q3 <- paste0(q3,"; \n COMMIT; \n ")
+      }
+      
       }
     }
-  
       r$output <- dbGetQuery(con,q3)
       return(r)
     }
