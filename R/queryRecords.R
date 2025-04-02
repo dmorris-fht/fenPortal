@@ -1536,16 +1536,18 @@ queryRecordsServer <- function(id, login, tables) {
           #w_taxa <- sql_in("u.nbn_taxon_version_key_for_recommended_name",tvk_list) # WITHOUT DESCENDENTS
           
           if(isTruthy(input$taxon)){
-            tvk_list <- uksi_full[unique(which(uksi_full$nbn_taxon_version_key %in% input$taxon)),c("nbn_taxon_version_key_for_recommended_name")]
-            desc <- paste0("SELECT D.taxon_version_key FROM (WITH RECURSIVE rec (organism_key) as
-                    (
-                      SELECT t1.organism_key, t1.taxon_version_key from lookups.uksi_tree t1 where taxon_version_key IN ",con_sql_string(tvk_list),"
-                      UNION ALL
-                      SELECT t2.organism_key, t2.taxon_version_key from rec, lookups.uksi_tree t2 where t2.parent_key = rec.organism_key
-                      )
-                    SELECT *
-                    FROM rec) D") # GET DESCENDENTS
-            w_taxa <- paste0("u.nbn_taxon_version_key_for_recommended_name IN (",desc,")")
+            # tvk_list <- uksi_full[unique(which(uksi_full$nbn_taxon_version_key %in% input$taxon)),c("nbn_taxon_version_key_for_recommended_name")]
+            # desc <- paste0("SELECT D.taxon_version_key FROM (WITH RECURSIVE rec (organism_key) as
+            #         (
+            #           SELECT t1.organism_key, t1.taxon_version_key from lookups.uksi_tree t1 where taxon_version_key IN ",con_sql_string(tvk_list),"
+            #           UNION ALL
+            #           SELECT t2.organism_key, t2.taxon_version_key from rec, lookups.uksi_tree t2 where t2.parent_key = rec.organism_key
+            #           )
+            #         SELECT *
+            #         FROM rec) D") # GET DESCENDENTS
+            
+            
+            w_taxa <- paste0("u.nbn_taxon_version_key_for_recommended_name IN (",taxon_desc(input$taxon),")")
           }else{
             w_taxa <- "(1=1)"
           }
@@ -1656,6 +1658,8 @@ queryRecordsServer <- function(id, login, tables) {
             result <- st_read(dsn = con0, 
                               query = sql, 
                               geometry_column = "geom")
+            
+            
             poolReturn(con0)
             return(result)
           })%...>% (function(result) {
@@ -1682,6 +1686,7 @@ queryRecordsServer <- function(id, login, tables) {
                 shinyjs::addClass(id = "dlDiv",class="buttonHidden")
                 
               }
+              
               showModal(results_modal(t))
           })
         
