@@ -1298,15 +1298,39 @@ uksi_load <- function(x){
   }
   if(3 %in% x){
     if(!isTruthy(fspp)){
-      fspp <<- read.csv("./www/fen_spp.csv",header = TRUE, encoding = "UTF-8")
+      con <- poolCheckout(con_global)
+      fspp <<- dbGetQuery(con,"SELECT * FROM lookups.fen_spp")  # read.csv("./www/fen_spp.csv",header = TRUE, encoding = "UTF-8")
+      
+      poolReturn(con)
     }
     
-    string_fspp <<- paste0("('",paste(fspp$nbn_taxon_version_key_for_recommended_name,collapse="','"),"')")
+    #string_fspp <<- paste0("('",paste(fspp$nbn_taxon_version_key_for_recommended_name,collapse="','"),"')") # OLD VERSION WITHOUT DESCENDENTS
+    string_fspp <<- paste0("(",taxon_desc(fspp$nbn_taxon_version_key_for_recommended_name),")")
     
-    string_afspp <<- fspp[which(fspp$alkaline_fen == TRUE),"nbn_taxon_version_key_for_recommended_name"]
-    string_afspp <<- paste0("('",paste(string_afspp,collapse="','"),"')")
+    # string_afspp <<- fspp[which(fspp$alkaline_fen == TRUE),"nbn_taxon_version_key_for_recommended_name"]
+    # string_afspp <<- paste0("('",paste(string_afspp,collapse="','"),"')")
+    
+    string_afspp <<- paste0("(",taxon_desc(fspp[which(fspp$alkaline_fen == TRUE),"nbn_taxon_version_key_for_recommended_name"]),")")
   }
 }
+
+# Function to get taxon descendents----
+
+taxon_desc <- function(t){
+  tvk_list <- uksi_full[unique(which(uksi_full$nbn_taxon_version_key %in% t)),c("nbn_taxon_version_key_for_recommended_name")]
+  desc <- paste0("SELECT D.taxon_version_key FROM (WITH RECURSIVE rec (organism_key) as
+                    (
+                      SELECT t1.organism_key, t1.taxon_version_key from lookups.uksi_tree t1 where taxon_version_key IN ",con_sql_string(tvk_list),"
+                      UNION ALL
+                      SELECT t2.organism_key, t2.taxon_version_key from rec, lookups.uksi_tree t2 where t2.parent_key = rec.organism_key
+                      )
+                    SELECT *
+                    FROM rec) D") # GET DESCENDENTS
+  return(desc)
+  
+}
+
+
 
 con_global0 <- poolCheckout(con_global)
 
