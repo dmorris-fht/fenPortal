@@ -404,7 +404,10 @@ dipsImportServer <- function(id,login,tables) {
                         !(is.numeric(x) ||
                         is.na(x))
                         })) == 0 &&
-            sum(!(import$data$dip_null %in% c(NA,0,1,2,3,4,5,6))) == 0
+            sum(!(import$data$dip_null %in% c(NA,0,1,2,3,4,5,6))) == 0 &&
+            all(colnames(import$data) %in% c("install_name",	"dip_date_time",	"dip_measurer",
+                                         "dip_depth_top",	"dip_notes",	"dip_null"))
+
             ){
             import$csv <- 1
             
