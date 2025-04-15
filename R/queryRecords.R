@@ -1553,7 +1553,7 @@ queryRecordsServer <- function(id, login, tables) {
           }
           
           # define sql where string
-          w <- paste(
+          w <- paste0("(",paste(
             # Site fields
             sql_in("f.county",input$county),
             sql_in("r.site",as.numeric(input$site)),
@@ -1583,8 +1583,8 @@ queryRecordsServer <- function(id, login, tables) {
             sql_date("r.created_date",input$created_date_start,input$created_date_end),
             sql_date("r.last_edited_date",input$edited_date,input$edited_date),
             sql_date("r.last_edited_date",input$edited_date_start,input$edited_date_end)
-            , sep = " AND "
-          )
+            , sep = ") AND (")
+          ,")")
           #define sql string
           sql <- paste0(
             "SELECT 
