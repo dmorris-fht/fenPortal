@@ -34,6 +34,7 @@ library(promises)
 library(geojsonsf) #?
 library(jsonlite)
 library(magick) # seems to have installed
+library(labdsv)
 
 #library(slickR) # Not in use
 library(base64enc)
@@ -142,8 +143,7 @@ null_text <- function(con, x, y){ifelse(isTruthy(x),paste0(y,"='",postgresqlEsca
 null_num <- function(x, y){ifelse(isTruthy(x),paste0(y,"=",x),paste0(y,"= NULL"))}
 
 null_date_val <- function(x){
-  
-  ifelse(isTruthy(x) && length(x) > 0,
+  ifelse(isTruthy(x) & length(x) > 0,
          paste0("TO_DATE('", format(x,"%Y-%m-%d") ,"','yyyy-mm-dd')"),
          "NULL")
 }
@@ -152,7 +152,7 @@ null_timestamp_val <- function(x){
          paste0("TO_TIMESTAMP('", x ,"','YYYY-MM-DD HH24:MI:SS')"),
          "NULL")
 }
-null_text_val <- function(con, x){ifelse(isTruthy(x) && nchar(x) >0,paste0("'",postgresqlEscapeStrings(con,x),"'"),"NULL")}
+null_text_val <- function(con, x){ifelse(isTruthy(x) & nchar(x) >0,paste0("'",postgresqlEscapeStrings(con,x),"'"),"NULL")}
 null_num_val <- function(x){ifelse(isTruthy(x),x,"NULL")}
 
 # Date functions ----
@@ -391,7 +391,7 @@ gf_vec <- function(x,v){
 
 like_string <- function(x,s){
   if(isTruthy(s)){
-    return(paste0("UPPER(",x,") LIKE '%",toupper(s),"%'"))
+    return(paste0("regexp_replace(UPPER(",x,"), '\\s', '', 'g') LIKE '%",toupper(s),"%'"))
   }
   else{
     return("(1=1)")
@@ -485,11 +485,6 @@ gf_sf <- function(g){
       }
       }
 }
-
-taxon_lookup <- function(t){
-  
-}
-
 
 import_validation <- function(x){
   prod(
