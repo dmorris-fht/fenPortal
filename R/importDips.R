@@ -379,48 +379,51 @@ dipsImportServer <- function(id,login,tables) {
         
           d <- read.csv(file$datapath, header = TRUE, encoding = "UTF-8")
           
-          colnames(d)[1] <- "install_name"
-          d$install_name <- apply(d[c("install_name")],1,trimws)
-          d$dip_null <- as.integer(d$dip_null)
-          d$site <- as.integer(input$choose_site_csv)
-        
-        isolate({  
-          i <- merge(d, tables$hydro_installs, 
-                     by.x = c("site","install_name"), 
-                     by.y = c("site","install_name"))
-          
-          import$data <- i[,c("id","install_name","dip_date_time","dip_measurer","dip_depth_top","dip_notes","dip_null")]
-          colnames(import$data)[1] <- c("install")
-
-                    # Check cols contain valid data
-          
-          
-          if(
-            isTruthy(import$data) &&
-            (nrow(import$data) > 0) &&
-            sum(apply(import$data[c("dip_date_time")],1,function(x){!IsDate(x,"%Y-%m-%d %H:%M")})) == 0 &&
-            sum(apply(import$data[c("dip_depth_top")],1,
-                      function(x){
-                        !(is.numeric(x) ||
-                        is.na(x))
-                        })) == 0 &&
-            sum(!(import$data$dip_null %in% c(NA,0,1,2,3,4,5,6))) == 0 &&
-            all(colnames(import$data) %in% c("install_name",	"dip_date_time",	"dip_measurer",
-                                         "dip_depth_top",	"dip_notes",	"dip_null"))
-
-            ){
-            import$csv <- 1
+          # First catch invalid headings
+          if(!all(colnames(d) %in% c("install_name",	"dip_date_time",	"dip_measurer",
+                                             "dip_depth_top",	"dip_notes",	"dip_null"))){
+            import$csv <- 0
+            invalid_data()
+          }else{
+            colnames(d)[1] <- "install_name"
+            d$install_name <- apply(d[c("install_name")],1,trimws)
+            d$dip_null <- as.integer(d$dip_null)
+            d$site <- as.integer(input$choose_site_csv)
             
-            shinyjs::hide("importAGOLtext")
-            shinyjs::show("importCSVtext") 
-            }else{
-              import$csv <- 0
-              invalid_data()
-
+            isolate({  
+              i <- merge(d, tables$hydro_installs, 
+                         by.x = c("site","install_name"), 
+                         by.y = c("site","install_name"))
+              
+              import$data <- i[,c("id","install_name","dip_date_time","dip_measurer","dip_depth_top","dip_notes","dip_null")]
+              colnames(import$data)[1] <- c("install")
+              
+              # Check cols contain valid data
+              
+              
+              if(
+                isTruthy(import$data) &&
+                (nrow(import$data) > 0) &&
+                sum(apply(import$data[c("dip_date_time")],1,function(x){!IsDate(x,"%Y-%m-%d %H:%M")})) == 0 &&
+                sum(apply(import$data[c("dip_depth_top")],1,
+                          function(x){
+                            !(is.numeric(x) ||
+                              is.na(x))
+                          })) == 0 &&
+                sum(!(import$data$dip_null %in% c(NA,0,1,2,3,4,5,6))) == 0 
+                
+              ){
+                import$csv <- 1
+                
+                shinyjs::hide("importAGOLtext")
+                shinyjs::show("importCSVtext") 
+              }else{
+                import$csv <- 0
+                invalid_data()
+                
               }
-          })
-
-        
+            })
+          }
       })
 
       #Import csv data to database
