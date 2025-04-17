@@ -192,6 +192,12 @@ div:has(> input[type~="search"]:disabled){
   text-align:center;
 }
 
+/* Class for highlighting table cells */
+
+.error{
+  background-color: orange !important;
+}
+
 /* CUSTOM SPINNERS FOR MODULES LOADING */
 
 div[data-spinner-id~="surveys-module"] {
@@ -388,3 +394,5 @@ div[data-spinner-id~="stratImport-module"] {
   width:100%;
   z-index: 10000000;
 }
+
+
