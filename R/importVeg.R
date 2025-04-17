@@ -12,33 +12,37 @@ importVegUI <- function(id){
                       h3("Import vegetation data"),
                       HTML("<p>Import a comma-separated value (.csv) file of plot data. 
                                          Download the import template from 
-                                         <a href='./templates/records_import_template.csv'>here</a>.</p>"),
-                          p("To import a file, first carry out the following validation steps. You can also filter by date."),
+                                         <a href='./templates/plots_import_template.csv'>here</a>.</p>"),
                           
-                      div(style="padding-bottom:5px",
-                        div(style="float:left;padding-right:5px","- Plots"),
-                        uiOutput(ns("plotTick"))
-                        ),br(),
-                      div(style="padding-bottom:5px",
-                        div(style="float:left;padding-right:5px","- Dates"),
-                        uiOutput(ns("dateTick"))
-                      ),br(),  
-                      div(style="padding-bottom:5px",
-                        div(style="float:left;padding-right:5px","- Environmental variables"),
-                        uiOutput(ns("envTick"))
-                      ),br(),
-                      div(style="padding-bottom:5px",
-                        div(style="float:left;padding-right:5px","- Species names"),
-                        uiOutput(ns("speciesTick"))
-                      ),br(),
-                      div(style="padding-bottom:5px",
-                        div(style="float:left;padding-right:5px","- Species abundances"),
-                        uiOutput(ns("abundanceTick"))
-                      ),br(),
                          
                       
                       box(title = "Load & validate data", width = 12, solidHeader = T,collapsible = T, collapsed = F,
                           column(12,
+                                 p("Choose a site and file to import. Then choose the species abundance measure and click
+                                   the 'validate' button to check the following."),
+                                 
+                                 div(style="padding-bottom:5px",
+                                     div(style="float:left;padding-right:5px",HTML("<li>Plots names are all present in the database</li>")),
+                                     uiOutput(ns("plotTick"))
+                                 ),br(),
+                                 div(style="padding-bottom:5px",
+                                     div(style="float:left;padding-right:5px",HTML("<li>Dates are in the format DD/MM/YYYY</li>")),
+                                     uiOutput(ns("dateTick"))
+                                 ),br(),  
+                                 div(style="padding-bottom:5px",
+                                     div(style="float:left;padding-right:5px",HTML("<li>Structural variables are numeric values</li>")),
+                                     uiOutput(ns("envTick"))
+                                 ),br(),
+                                 div(style="padding-bottom:5px",
+                                     div(style="float:left;padding-right:5px",HTML("<li>Species names are matched to the taxon dictionary</li>")),
+                                     uiOutput(ns("speciesTick"))
+                                 ),br(),
+                                 div(style="padding-bottom:5px",
+                                     div(style="float:left;padding-right:5px",HTML("<li>Species abundances match the abundance type specified</li>")),
+                                     uiOutput(ns("abundanceTick"))
+                                 ),br(),br(),
+                                 p("When the above are all are ticked, the data are ready to import."),
+                                 
                                  selectizeInput(ns("site"), label = "Choose site", choices = c(), multiple = FALSE),
                                  conditionalPanel(ns = NS(id),condition = 'input.site !=""',
                                                   
@@ -101,15 +105,17 @@ importVegServer <- function(id, login, tables) {
   moduleServer(
     id,
     function(input, output, session) {
+      # Spinner on table has no height on table load
+
+      # number formatting
+      # DATE ROW TO DATE PICKER
       
       # Module initialization ---- 
        shinyjs::hide("options")
       
-      observe({
-        role <- login$role
-        user <- login$username
-        password <- login$password
-      })
+      role <- login$role
+      user <- login$username
+      password <- login$password
       
       isolate({
         app_tables(tables, c("sites","surveys","plots"))
@@ -131,7 +137,7 @@ importVegServer <- function(id, login, tables) {
                  $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline');
           "
                  )
-        )
+            )
        
         if(isTruthy(tables$sites)){
           choices_sites <- tables$sites$id
@@ -150,14 +156,14 @@ importVegServer <- function(id, login, tables) {
                          ))
         
         if(isTruthy(tables$sites)){
-          choices_surveys <- tables$surveys$id
-          names(choices_surveys) <- tables$surveys$survey
-        }
-        else{
+          open <- tables$surveys[tables$surveys$status == "open",]
+          choices_surveys <- open$id
+          names(choices_surveys) <- open$survey
+          }else{
           choices_surveys <- c("")
-        }
+          }
       
-        updateSelectizeInput(session, inputId = "survey", 
+        updateSelectizeInput(session, inputId = "survey", server = F,
                              choices = choices_surveys,
                              options = list(
                                placeholder = 'Choose a dataset',
@@ -176,13 +182,15 @@ importVegServer <- function(id, login, tables) {
       shinyjs::disable("import")
       
       # Symbol
-      tick <- "<div style='float:left;padding-right:5px'><i class='fa-solid fa-check' style='color:green;font-size:16px'></i></div>"
-      cross <- "<div style='float:left;padding-right:5px'><i class='fa-solid fa-xmark' style='color:green;font-size:16px'></i></div>"
-
+      tick <- "<div style='float:left;padding-right:5px'><i class='fa-solid fa-check' style='color:green;font-size:18px'></i></div>"
+      cross <- "<div style='float:left;padding-right:5px'><i class='fa-solid fa-xmark' style='color:red;font-size:18px'></i></div>"
+      
       # Reactives ----
       
       rv <- reactiveValues(df0 = NA, # CSV file
-                           df1 = NA, df1_validation = NA, # Filtered CSV
+                           df1 = NA,  # Table to upload 
+                           df1_validation = NA, # Validation tracker
+                           df1_validation_col = NA, # column validation tracker
                            t = NA, t_validation = NA, # DF of species from df1
                            v = 0 # Validation counter, value is 5 when validation complete (dates,env,plots,abundance,taxa)
                            )
@@ -191,141 +199,84 @@ importVegServer <- function(id, login, tables) {
       
       renderCsvTable <- function(){
         renderDT({ 
-          x <- cbind(rv$df1[1:nrow(rv$df1),c(1,3:ncol(rv$df1))],rv$df1_validation)
-          
-          n1 <- ncol(rv$df1)
-          n2 <- ncol(rv$df1_validation)
-          n3 <- ncol(x)
-          
-          x$col <- NA
-          x[1:8,"col"] <- 1
-          x[8:nrow(x),"col"] <- 2
-          
-          ns <- session$ns
-
-          x[11:nrow(x),1] <- unlist(lapply(1:(nrow(rv$df1)-10),function(i){
-            as.character(selectizeInput(
-              ns(paste0("taxon_",i)),
-              selected = rv$df1[10 + i,2],
-              label=NULL,
-              choices=c(rv$df1[10 + i,2]),
-              multiple = TRUE,
-              options = list(maxItems = 1,
-              
-              # Callbacks so that drop down overflows table cell
-                             
-              onFocus = I("function(){
+          isolate({
+            x <- rv$df1[1:nrow(rv$df1),c(1,3:ncol(rv$df1))]
+            
+            ns <- session$ns
+            
+            x[11:nrow(x),1] <- unlist(lapply(1:(nrow(rv$df1)-10),function(i){
+              as.character(selectizeInput(
+                ns(paste0("taxon_",i)),
+                selected = rv$df1[10 + i,2],
+                label=NULL,
+                choices=c(rv$df1[10 + i,2]),
+                multiple = TRUE,
+                options = list(maxItems = 1,
+                               
+                               # Callbacks so that drop down overflows table cell
+                               
+                               onFocus = I("function(){
                   var id = this['$control_input']['0']['id'];
                   var td = $('#' + id).closest('td');
                       td.addClass('show');
                                     }"),
-              
-              onBlur = I("function(){
+                               
+                               onBlur = I("function(){
                   var id = this['$control_input']['0']['id'];
                   var td = $('#' + id).closest('td');
                       td.removeClass('show');
                                     }")
-              )
-            ))
-          }))
+                )
+              ))
+            }))
             
-          # UPDATESELECTIZE DOESN'T WORK
-          # DATE ROW TO DATE PICKER
+            
+            
+            d <- DT::datatable(
+              x
+              ,
+              colnames = c("",as.vector(unlist(rv$df1[1,3:ncol(rv$df1)]))),
+              escape = FALSE,
+              rownames = FALSE,
+              selection = 'none',
+              extensions = c("FixedColumns","FixedHeader"),
+              fillContainer = TRUE,
+              editable = list(target= "cell",disable=list(columns=c(0))),
+              plugins = "ellipsis",
+              options = list(
+                dom = "tpli",
+                ordering=F,
+                pageLength = 200,
+                processing = TRUE,
+                language = list(zeroRecords = "No data"),
+                scrollY = "70vh",
+                scrollX = TRUE,
+                autoWidth = TRUE,
+                columnDefs = list(
+                  list(
+                    targets = 1:(ncol(x)-1),
+                      render = JS("$.fn.dataTable.render.ellipsis( 50, false )")
+                      ),
+                  
+                  list(width="200px",targets = 0:(ncol(x)-1)),
+                  list(width="50px",targets = 1:(ncol(x)-1))
+                  )
+                ,
+                fixedColumns = TRUE,
+                preDrawCallback = JS('function() { Shiny.unbindAll(this.api().table().node()); }'),
+                drawCallback = JS('function() { Shiny.bindAll(this.api().table().node()); } ')
+              ))%>% formatStyle(1,fontWeight="bold") %>% 
+              formatStyle(1,backgroundColor="#7af478") %>%
+              formatStyle(2:ncol(x),textAlign = "center")
+            
+            
+          })
           
-          DT::datatable(
-            x
-            ,
-            colnames = c("",as.vector(unlist(rv$df1[1,3:ncol(rv$df1)])),rep("",ncol(rv$df1_validation)),"col"),
-            escape = FALSE,
-            rownames = FALSE,
-            selection = 'none',
-            extensions = c("FixedColumns","FixedHeader"),
-            fillContainer = TRUE,
-            editable = list(target= "cell",disable=list(columns=c(0))),
-            options = list(
-              dom = "tpli",
-              ordering=F,
-              pageLength = 25,
-              processing = TRUE,
-              language = list(zeroRecords = "No data"),
-              scrollY = "70vh",
-              scrollX = TRUE,
-              autoWidth = TRUE,
-              fixedColumns = TRUE,
-              columnDefs = list(
-                list( targets = "_all", width = '200px'),
-                list(visible=FALSE,targets = (n1-1):(n3))
-                ),
-              preDrawCallback = JS('function() { Shiny.unbindAll(this.api().table().node()); }'),
-              drawCallback = JS('function() { Shiny.bindAll(this.api().table().node()); } ')
-            )) %>% formatStyle(1,fontWeight="bold") %>% 
-            formatStyle(1,backgroundColor="#7af478") %>%
-            formatStyle("col",target="row",backgroundColor = styleEqual(c(1,2),c("#c7f5c6",""))) %>%
-            formatStyle(2:ncol(x),textAlign = "center") %>%
-            formatStyle(2:(n1-1),(n1):(n3),backgroundColor = styleEqual(c(0,1),c("orange","")))
+          d
+          
         },server=T) 
-        
-        
       }
 
-      updateCsvTable <- function(){
-        proxy <- DT::dataTableProxy("csvTable",deferUntilFlush=TRUE)
-        
-        x <- cbind(rv$df1[,c(1,3:ncol(rv$df1))],rv$df1_validation)
-     
-        x$col <- NA
-        x[1:8,"col"] <- 1
-        x[8:nrow(x),"col"] <- 2
-        
-        ns <- session$ns
-        
-        x[11:nrow(x),1] <- unlist(lapply(1:(nrow(rv$df1)-10),function(i){
-          as.character(selectizeInput(
-            ns(paste0("taxon_",i)), 
-            selected = rv$df1[10 + i,2],
-            label=NULL, 
-            choices=c(rv$df1[10 + i,2]),
-            multiple = TRUE,
-            options = list(maxItems = 1,
-                           load = I("function(query,callback){
-                                  $(this).click(function(){
-                                    console.log('hi');
-                                    $(this).closest('td').addClass('show')
-                                  })
-                           }")
-                           
-                           ),
-            )
-            
-          )
-        }))
-        
-        DT::replaceData(proxy,data = x , resetPaging = FALSE, rownames = FALSE)
-        
-        for(i in 1:nrow(rv$t)){
-          updateSelectizeInput(session,paste0("taxon_",i),selected = rv$t[i,"match"],choices= choices_uksi_plants,server=T)
-        }
-        
-        }
-      
-      # Colour in heading where error in column
-      # Tick validation
-      # Fix selectize update
-      # Get rid of validation button and updateCSVTable, make updates to style on cell edit via JS
-      
-      
-      ## Update with cell edits ----
-      observeEvent(input$csvTable_cell_edit, {
-        r  <- input$csvTable_cell_edit$row
-        c <- input$csvTable_cell_edit$col + 2
-        rv$df1[r, c] <- input$csvTable_cell_edit$value
-        
-        # if(c>1){
-        #   validate()
-        #   updateCsvTable()
-        # }
-      })
-      
       # Csv loading ----
       
       observe({
@@ -336,12 +287,19 @@ importVegServer <- function(id, login, tables) {
         }
       })
       
+      invalidCsv <- function(err) {
+        ns <- session$ns
+        modalDialog(
+          div(
+            h4("Invalid csv file"),
+            HTML(err)
+            ,style="width:100%; text-align:center")
+          , footer=NULL,size="s",easyClose=TRUE,fade=TRUE)
+      }
+      
       observeEvent(input$csvFile,{
-        # Check file format ---
-        
-        # DO THIS HERE
-        
-        # Read in CSV file ----
+
+        ## Read in CSV file ----
         
         file <- input$csvFile
         ext <- file$type
@@ -352,299 +310,453 @@ importVegServer <- function(id, login, tables) {
         showSpinner("csvTable")
         
         d <- read.csv(file$datapath, header = FALSE,fileEncoding = "UTF-8-BOM")
+        d[d == ""] <- NA
+        d[is.null(d)] <- NA
+
+        err <- NULL
+        if(!identical(d[1:10,1],c("plot",
+                          "visit",
+                          "record_date",
+                          "height",
+                          "bare_ground",
+                          "bryophyte_cover",
+                          "litter_cover",
+                          "nvc",
+                          "note",
+                          "recorder"))){
+          err <- c(err,"Invalid row names")
+        }
+        if(length(unique(d[11:nrow(d),2])) != nrow(d) - 10){
+          err <- c(err,"Species names repeated")
+        }
+        if(sum(rowSums(!is.na(d[11:nrow(d),3:ncol(d)]))==0)>0){
+          err <- c(err,"Species with null rows")
+        }
         
-        rv$df0 <-d
-        rv$df1 <- d
-        
-        d_validation <- d[,3:ncol(d)]
-        d_validation[] <- 1
-        rv$df1_validation <- d_validation
-        
-        
-        ### Load table ----
-        
-        output$previewData <- renderUI({
-          ns <- NS(id)
-          tagList(
-            withSpinner(
-              DT::DTOutput(outputId = ns("csvTable"))
-              ,type = 7, caption = "Loading")
-          )
-        })
-        
-        output$csvTable <- renderCsvTable()
+        if(isTruthy(err)){
+          err <- paste0("<p>Please fix the following errors in the source file and reimport:</p>","<ul><li>",paste(err,collapse="</li><li>"),"</li></ul>")
+          showModal(invalidCsv(err))
+          }else{
+            rv$df0 <-d
+            rv$df1 <- d
+            
+          ### Load data table ----
+          
+          output$previewData <- renderUI({
+            ns <- NS(id)
+            tagList(
+              withSpinner(
+                DT::DTOutput(outputId = ns("csvTable"),height="75vh")
+                ,type = 7, caption = "Loading",hide.ui = FALSE)
+              )
+          })
+          output$csvTable <- renderCsvTable()
+        }
       })
       
-      ## Validate CSV ----
+      # Data validation ----
+      
+      mode <- reactiveVal("read")
+      
+      ## Table Validation function ----
+      validate_table <- function(data,ab,s){
+        suppressWarnings({
+          d <- data[,c(3:ncol(data))]
+          v <- d
+          v[] <- 1
+          v[1,] <- d[1,] %in% tables$plots[tables$plots$site == as.numeric(s),]$plot # Check plots
+          v[3,] <- sapply(d[3,],function(x) ifelse(isTruthy(as.Date(x,format="%d/%m/%Y")),1,0))
+          v[4:7,] <- as.data.frame(t(apply(d[4:7,],1, function(x) ifelse(!is.na(as.numeric(x)) | x == "" | is.na(x),1,0))))
+          
+          if(ab == "Domin"){
+            v[11:nrow(v),] <- apply(d[11:nrow(d),],2,
+                                    function(x) ifelse(x %in% 1:10 | is.na(x) | x == "",1,0))
+          }
+          if(ab == "Percentage cover"){
+            v[11:nrow(v),] <- apply(d[11:nrow(d),],2,
+                                    function(x) ifelse((is.na(x) | x == "") | (!is.na(as.numeric(x)) & as.numeric(x) <= 100 & as.numeric(x) >= 0),1,0))
+          }
+          if(ab == "Frequency"){
+            v[11:nrow(v),] <- apply(d[11:nrow(d),],2,
+                                    function(x) ifelse((is.na(x) | x == "") | (!is.na(as.numeric(x)) & as.numeric(x) <= 1 & as.numeric(x) >= 0),1,0))
+          }
+          if(ab == "Presence"){
+            v[11:nrow(v),] <- apply(d[11:nrow(d),],2,
+                                    function(x) ifelse((is.na(x) | x == "") | (!is.na(as.numeric(x)) & as.numeric(x) %in% c(0,1)),1,0))
+          }
+          
+          return(v)
+        })
+      }
+      
+      ## Table cell validation function ----
+      validate_cell <- function(i = NULL,j = NULL,ab){
+        suppressWarnings({
+          v <- 1
+          i0 <- i
+          j0 <- j
+          d <- rv$df1[,c(3:ncol(rv$df1))]
+         
+          if(i0 %in% c(2,8,9,10)){
+            return(list(v=1,i0=i0,j0=j0))
+          }
+          
+          # Plots
+          if(i0 == 1 &
+             !(d[i0,j0] %in% tables$plots[tables$plots$site == as.numeric(input$site),]$plot)){
+            v <- 0
+          }
+          # Dates
+          if(i0 == 3 &
+             !isTruthy(as.Date(d[i0,j0],format="%d/%m/%Y"))){
+            v <- 0
+          }
+          
+          y <- trimws(d[i0,j0])
+          # Structure attributes
+          if(i0>3 & i0 <8 & !(suppressWarnings(isTruthy(as.numeric(y)) || !isTruthy(y)))){
+            v <- 0
+          }
+          # Abundance
+          if(i0 > 10 &
+             (
+               (ab == "Domin" & !(!isTruthy(y) || (isTruthy(as.integer(y)) & as.numeric(y) == as.integer(y) & as.integer(y) <= 10 & as.integer(y) >= 1))) ||
+               (ab == "Percentage cover" & !(!isTruthy(y) || (isTruthy(as.numeric(y)) & as.numeric(y) <= 100 & as.numeric(y) >= 0))) ||
+               (ab == "Frequency" & !(!isTruthy(y) || (isTruthy(as.numeric(y)) & as.numeric(y) <= 1 & as.numeric(y) >= 0))) ||
+               (ab == "Presence" & !(!isTruthy(y) || (isTruthy(as.numeric(y)) & as.numeric(y) %in% c(0,1))))
+             )
+          ){
+            v <- 0
+          }
+          
+          
+          r <- list(v=v,i0=i0,j0=j0)
+          return(r)
+        })
+      }
+      
+      # Validation mode ----  
       
       observeEvent(input$loadCSV,{
-        req(input$csvFile)
-        req(input$abundance)
-        
-        d <- rv$df1
-        
-        ### Validate ----
-        
-        validate()
-        
-        ### Check taxa ----
-        
-        t <- data.frame(t0 = trimws(d[11:nrow(d),2]))
-        t$match <- lapply(d[11:nrow(d),1],function(s){ifelse(isTruthy(s),s,NA)})
-        no_match <- which(is.na(t$match))
-        match <- t[no_match,]  %>% left_join(uksi_pl_rec, join_by(t0 == name), relationship = "one-to-one")
-        t[no_match,"match"] <- match$nbn_taxon_version_key
-        rv$t <- t[,c("t0","match")]
-        
-        # ns <- session$ns
-        # 
-        # rv$t$select <- NA
-        # rv$t$select <- lapply(1:nrow(rv$t),function(i){
-        #   as.character(selectizeInput(
-        #     ns(paste0("taxon_",i)), 
-        #     label=NULL, 
-        #     choices=c(""),
-        #     multiple = TRUE,
-        #     options = list(maxItems = 1, placeholder = rv$t[i,"t0"])
-        #     ))
-        # })
-        
-        updateCsvTable()
-        
-        
-        
-        
-        
-        
-        
-        ### Validation message ----
-        
-        
-        
-          })
-      
-      # Validation function ----
-      
-      validate <- function(){
-        d <- rv$df1
-        
-        ### Check plot names ----
-        
-        invalid_plots <- which(!(d[1,3:ncol(d)] %in% tables$plots[tables$plots$site == as.numeric(input$site),]$plot))
-        rv$df1_validation[1,invalid_plots] <- 0
-        
-        ### Check dates ----
-        
-        not_dates <- lapply(d[3,3:ncol(d)],function(y){
-          ifelse(isTruthy(as.Date(y,format="%d/%m/%Y")),1,0)
-        })
-        rv$df1_validation[3,] <- not_dates
-        
-        ### Check structure attributes ----
-        
-        rv$df1_validation[4:7,] <- apply(d[4:7,3:ncol(d)],c(1,2),function(y){
-          y <- trimws(y)
-          suppressWarnings(
-            ifelse(isTruthy(as.numeric(y)) || !isTruthy(y),1,0)
-          )})
-        
-        rv$df1[4:7,3:ncol(d)] <- apply(d[4:7,3:ncol(d)],c(1,2),function(y){
-          y <- trimws(y)
-          suppressWarnings(
-            ifelse(isTruthy(as.numeric(y)),as.numeric(y),y)
-          )})
-        
-        ### Check abundance ----
-        
-        if(input$abundance == "Domin"){
-          
-          rv$df1_validation[11:nrow(d),] <- apply(d[11:nrow(d),3:ncol(d)],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(!isTruthy(y) || (isTruthy(as.integer(y)) & as.numeric(y) == as.integer(y) & as.integer(y) <= 10 & as.integer(y)) >= 1,1,0)
-          })
-          
-          rv$df1[11:nrow(d),3:ncol(d)] <- apply(d[11:nrow(d),3:ncol(d)],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(isTruthy(as.integer(y)) & as.numeric(y) == as.integer(y) & as.integer(y) <= 10 & as.integer(y) >= 1,
-                   as.integer(y),y)
-          })
-        }
-        
-        if(input$abundance == "Percentage cover"){
-          rv$df1_validation[11:nrow(d),] <- apply(d[11:nrow(d),],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(!isTruthy(y) || (isTruthy(as.integer(y)) & !is.na(as.numeric(y)) & as.numeric(y) <= 100 & as.numeric(y) >= 0.01),1,0)
-          })
-          
-          rv$df1[11:nrow(d),3:ncol(d)] <- apply(d[11:nrow(d),3:ncol(d)],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(isTruthy(as.integer(y)) & !is.na(as.numeric(y)) & as.numeric(y) <= 100 & as.numeric(y) >= 0.01,
-                   as.integer(y),y)
-          }) 
-        }
-        
-        if(input$abundance == "Frequency"){
-          rv$df1_validation[11:nrow(d),] <- apply(d[11:nrow(d),],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(!isTruthy(y) || (!is.na(as.numeric(y)) & as.numeric(y) <= 1 & as.numeric(y) >= 0.0000001),1,0)
-          })
-          
-          rv$df1[11:nrow(d),3:ncol(d)] <- apply(d[11:nrow(d),3:ncol(d)],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(!is.na(as.numeric(y)) & as.numeric(y) <= 1 & as.numeric(y) >= 0.0000001,
-                   as.integer(y),y)
-          })
-        }
-        if(input$abundance == "Presence"){
-          rv$df1_validation[11:nrow(d),] <- apply(d[11:nrow(d),],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(isTruthy(y),1,0)
-          })
-          
-          rv$df1[11:nrow(d),3:ncol(d)] <- apply(d[11:nrow(d),3:ncol(d)],c(1,2),function(y){
-            y <- trimws(y)
-            ifelse(isTruthy(y),1,NA)
-          })
-        }
-        
-      }
-      
-      
-      
-      # Filter dates ----
-      
-      observeEvent(input$filterDates,{
-        req(rv$df0)
-        
-        # Check date formatting
-        not_dates <- which(!(unlist(lapply(x[3,],function(y){IsDate(y)}))))
-        
-        if(length(not_dates) > 0){
-          dates_modal(session,not_dates)
-        }else{
-          rv$v <- rv$v + 1
-          
-          if(isTruthy(rv$df1)){
-            x <- rv$df1
-          }else{
-            x <- rv$df0
-          }
-          filter_dates(x)
-        }
-        
-        
-      })
-      
-      dates_modal <- function(session,d){
-        ns <- session$ns
-        modalDialog(
-          tagList(
-            div(style="text-align:center",
-                h4("Dates checked"),
-                div(style="text-align:center;height:100%;overflow-y:auto;overflow-x:hidden",
-                    p("The following columns do not contain valid dates in the format 'dd/mm/yyyy'. Click 'Continue' to remove
-                      these columns and filter columns with valid dates."),
-                    p(paste(d,collapse = ",")),
-                    actionButton(ns("continueDates"),"Continue"),
-                    actionButton(ns("cancelDates"),"Cancel")
-                )
-                
-            )
-          ),
-          footer=NULL,easyClose = F, size = "s"
-        )
-      }
-      
-      observeEvent(input$continueDates,{
-        if(isTruthy(rv$df1)){
-          x <- rv$df1
-        }else{
-          x <- rv$df0
-        }
-        filter_dates(x)
-      })
-      
-      observeEvent(input$cancelDates,{
-        output$plotTick <- renderText({cross})
-        removeModal()
-      })
-      
-      filter_dates <- function(x){
         showSpinner("csvTable")
         
-        which_dates <- which(unlist(lapply(x[3,],
-                                           function(y){
-                                             IsDate(y) *
-                                               (as.Date(y, format = "%d/%m/%Y") <= max) * 
-                                               (as.Date(y, format = "%d/%m/%Y") >= min)
-                                           }
-        )
-        ) >0
-        )
+        mode("validate")
+        shinyjs::disable("loadCSV")
         
-        min <- as.Date(input$dateRange[1])
-        max <- as.Date(input$dateRange[2])
+        # VALIDATE VISIT 
+        rv$df1_validation <- validate_table(rv$df1,input$abundance,input$site)
         
-        if(length(which_dates) < ncol(x)){
-          x <- x[,which_dates]
-          which_taxa <- which(rowSums(!is.na(x[11:nrow(x),]))>0)
-          rv$df1 <- x[which_taxa,]
+        future_promise({
+          # VALIDATE SPECIES 
+          t <- data.frame(t0 = trimws(rv$df1[11:nrow(rv$df1),2]))
+          t$match <- lapply(rv$df1[11:nrow(rv$df1),1],function(s){ifelse(isTruthy(s),s,NA)})
+          no_match <- which(is.na(t$match))
+          match <- t[no_match,]  %>% left_join(uksi_pl_rec, join_by(t0 == name), relationship = "one-to-one")
+          t[no_match,"match"] <- match$nbn_taxon_version_key
+          t <- t[,c("t0","match")]
           
-          output$csvTable <- DT::renderDataTable({ 
-            
-            x <- rv$df1[2:nrow(rv$df1),]
-            
-            DT::datatable(
-              x
-              ,
-              colnames = as.vector(unlist(rv$df1[1,],"Hidden")),
-              escape = FALSE,
-              rownames = TRUE,
-              selection = 'single',
-              extensions = c("FixedColumns","FixedHeader","Scroller"),
-              fillContainer = TRUE,
-              options = list(
-                columnDefs = list(list(width = '200px', targets = 2)),
-                dom = "t",
-                ordering=F,
-                pageLength = nrow(x),
-                processing = FALSE,
-                language = list(zeroRecords = "No data"),
-                scrollY = "60vh",
-                fixedColumns = list(leftColumns = 1)
-              ))%>% formatStyle(0,fontWeight="bold")
-          }) 
+          ## NEED TO MAKE THIS FASTER
+          
+          for(i in 1:nrow(t)){
+            c <- c("",choices_uksi_plants)
+            names(c) <- c(t[i,1],names(choices_uksi_plants))
+
+            if(!is.na(t[i,"match"])){
+              updateSelectizeInput(session,
+                                   paste0("taxon_",i),
+                                   selected = t[i,"match"],
+                                   choices= c,
+                                   options = list(placeholder = t[i,1],maxOptions = 25),
+                                   server=T)
+              rv$df1[10+i,1] <- t[i,"match"]
+              paste0("runjs(\"$('#importVeg-csvTable tr').eq(",11 + i,").find('td').eq(0).addClass('error')\");")
+            }else{
+              updateSelectizeInput(session,
+                                   paste0("taxon_",i),
+                                   selected = "",
+                                   options = list(placeholder = t[i,1],maxOptions = 25),
+                                   choices= c,
+                                   server=T)
+              paste0("runjs(\"$('#importVeg-csvTable tr').eq(",11 + i,").find('td').eq(0).removeClass('error')\");")
+            }
+          }
+          
+          return(t)
+        })%...>% (function(t){
+          rv$t <- t[,c("t0","match")]
+          rv$t_validation <- 0
+          
+          hideSpinner("csvTable")
+          shinyjs::enable("loadCSV")
+        })
+      })
+      
+      observeEvent(rv$t,{
+        req(rv$t)
+        for(i in 1:nrow(rv$t)){
+          eval(parse(text=paste0("observeEvent(input$taxon_",i,", ignoreNULL = FALSE,{
+                   if(!isTruthy(input$taxon_",i,")){
+                   rv$t_validation <- rv$t_validation - 1
+                    runjs(\"$('#importVeg-csvTable tr').eq(",11 + i,").find('td').eq(0).addClass('error')\");
+                   }else{
+                   rv$t_validation <- rv$t_validation + 1
+                   rv$df1[10+i,1] <- input$taxon_",i,"
+                    runjs(\"$('#importVeg-csvTable tr').eq(",11 + i,").find('td').eq(0).removeClass('error')\");
+                    }
+            })")))
         }
+      })
+
+      ## Validation tracker ----
+      observeEvent(rv$df1_validation,{
+        req(rv$df1_validation)
+        req(mode() == "validate") 
         
+        showSpinner("csvTable")
+        
+        # Update reactive to track columns with errors
+        rv$df1_validation_col <- as.vector(colSums(rv$df1_validation)-nrow(rv$df1_validation))
+        
+        # Highlight cells with errors
+        cells <- as.data.frame(which(rv$df1_validation == 0,arr.ind =  T))
+        cells <- cells[!(cells$row %in% c(2,8,9,10)),]
+        if(isTruthy(cells) & nrow(cells) > 0){
+          apply(cells,1,function(x){
+            i <- x[1]
+            j <- x[2]
+              runjs(paste0('
+                $("#importVeg-csvTable tr").eq(',i+1,').find("td").eq(',j,').addClass("error");
+               '))
+          })
+          }
+
+        # Validation ticks
+        ## Plot names tick
+        if(sum(rv$df1_validation[1,2:ncol(rv$df1_validation)]) == ncol(rv$df1_validation)-1){
+          output$plotTick <- renderUI({HTML(tick)})
+        }else{
+          output$plotTick <- renderUI({HTML(cross)})
+        }
+        ## Dates tick THIS IS NOT CHANGING IF CELLS ARE CORRECTED
+        if(sum(rv$df1_validation[3,2:ncol(rv$df1_validation)]) == ncol(rv$df1_validation)-1){
+          output$dateTick <- renderUI({HTML(tick)})
+        }else{
+          output$dateTick <- renderUI({HTML(cross)})
+        }
+        ## Structural variables tick
+        if(sum(rv$df1_validation[4:7,2:ncol(rv$df1_validation)]) == 4 * (ncol(rv$df1_validation)-1)){
+          output$envTick <- renderUI({HTML(tick)})
+        }else{
+          output$envTick <- renderUI({HTML(cross)})
+        }
+        ## Abundance tick
+        if(sum(rv$df1_validation[11:nrow(rv$df1_validation),2:ncol(rv$df1_validation)]) == (nrow(rv$df1_validation)-10) * (ncol(rv$df1_validation)-1) ){
+          output$abundanceTick <- renderUI({HTML(tick)})
+        }else{
+          output$abundanceTick <- renderUI({HTML(cross)})
+        }
         hideSpinner("csvTable")
+      })
+      
+      observeEvent(rv$df1_validation_col,{
+        # Colour column headings for columns with errors
+
+        err <- paste0("[",paste0(which(rv$df1_validation_col < 0),collapse=","),"]")
+        val <- paste0("[",paste0(which(rv$df1_validation_col == 0),collapse=","),"]")
+        
+        runjs(
+          paste0('var err = ',err,';
+                 $("#importVeg-csvTable").find("th").filter(function(i) {
+                                                                        return $.inArray(i, err) > -1;
+                                                                        }).addClass("error");')
+          )
+        runjs(
+          paste0('var val = ',val,';
+                 $("#importVeg-csvTable").find("th").filter(function(i) {
+                                                                        return $.inArray(i, val) > -1;
+                                                                        }).removeClass("error");')
+          )
+        })
+      
+      # Species validation tick
+      
+      observeEvent(rv$t_validation,{
+        req(rv$t_validation)
+        req(rv$df1)
+        ## Species tick
+        if(sum(rv$t_validation) == nrow(rv$df1)-10){
+          output$speciesTick <- renderUI({HTML(tick)})
+        }else{
+          output$speciesTick <- renderUI({HTML(cross)})
+        }
+      })
+      
+    # Update with cell edits ----
+    observeEvent(input$csvTable_cell_edit, {
+      r  <- input$csvTable_cell_edit$row
+      c <- input$csvTable_cell_edit$col + 2
+      rv$df1[r, c] <- input$csvTable_cell_edit$value
+      
+      if(mode() == "validate"){
+        v_cell <- validate_cell(r,c-2,input$abundance)
+        rv$df1_validation[v_cell$i0,v_cell$j0] <- v_cell$v
+        
+        if(v_cell$v == 1){
+          runjs(paste0('
+                $("#importVeg-csvTable tr").eq(',v_cell$i0+1,').find("td").eq(',v_cell$j0,').removeClass("error");
+               '))
+        }
       }
       
-
-      
-      observeEvent(input$refresh,{
-        rv$df1 <- rv$df0
-        d_validation <- d[,3:ncol(d)]
-        d_validation[] <- 1
-        rv$df1_validation <- d_validation
-        
-        output$csvTable <- renderCsvTable()
-        
-        output$plotTick <- renderText({""})
-        output$dateTick <- renderText({""})
-        output$envTick <- renderText({""})
-        output$speciesTick <- renderText({""})
-        output$abundanceTick <- renderText({""})
+      if(r == 1){
+        runjs(
+        paste0('$("#importVeg-csvTable").find("th").eq(',input$csvTable_cell_edit$col,').html("',input$csvTable_cell_edit$value,'");')          
+        )
+      }
       })
       
-
+    # IMPORT DATA ----
       
-      
-      
-      # Import ----
+      observe({
+        req(rv$df1)
+        req(rv$df1_validation)
+        
+        if(!isTruthy(rv$df1_validation == 0) & isTruthy(input$survey) & sum(rv$t_validation) == nrow(rv$df1)-10){
+          shinyjs::enable("import")
+        }else{
+          shinyjs::disable("import")
+        }
+      })
       
       observeEvent(input$import,{
-        req(rv$v == 5)
-      })
+        req(rv$df1)
+        req(rv$df1_validation)
+        req(!isTruthy(rv$df1_validation == 0) & isTruthy(input$survey) & sum(rv$t_validation) == nrow(rv$df1)-10)
+        
+        removeModal()
+        showModal(import_progress_modal())
+        
+        # split out visits table
+        v <- rv$df1[c(1,3,4,5,6,7,8,9,10),3:ncol(rv$df1)]
+        v <- data.frame(t(v))
+        colnames(v) <- c("plot_reference","record_date","height","bare_ground","bryophyte_cover",
+                         "litter_cover","nvc","note","recorder")
+        
+      future_promise({
+        con0 <- fenDb0(user,password)
+        
+        # RETRIEVE PLOT REFERENCES FROM SITE AND PLOT NAMES
+        plotrefs <- dbGetQuery(con0,
+                   paste0("SELECT plot, plot_reference FROM spatial.monitoring_vegetation WHERE site = ",as.numeric(input$site),
+                          " AND ",
+                          sql_in("plot",v$plot_reference)
+                          )
+                   )
+        plotrefs <- plotrefs[order(match(plotrefs$plot,v$plot_reference)),]
+        v$plot_reference <- plotrefs$plot_reference
+        
+        # NEED TO THROW AN ERROR HERE JUST IN CASE, THOUGH ALL THE PLOTS SHOULD MATCH !!!
+        
+        # INSERT IMPORT & VISITS
+        q0 <- paste0("INSERT INTO records.imports (source_type,source,notes,source_attachments,schema,table_name) VALUES (",
+                     2,",",
+                     null_text_val(con0,input$csvFile),",",
+                     null_text_val(con0,input$importNote),",",
+                     FALSE,",",
+                     "'records'",",",
+                     "'plot_visits'",
+                     ") RETURNING id")
+        
+          # INSERT VISITS
+          
+          q1<-"INSERT INTO records.plot_visits (plot_reference,record_date,height,bare_ground,bryophyte_cover,litter_cover,nvc,note,recorder,survey,import) VALUES \n"
+          Q <- apply(v,1,function(x){
+            paste0("(",paste(
+              c(null_text_val(con0,x[1]),
+                null_date_val(as.Date(x[2],"%d/%m/%Y")),
+                null_num_val(x[3]),
+                null_num_val(x[4]),
+                null_num_val(x[5]),
+                null_num_val(x[6]),
+                null_text_val(con0,x[7]),
+                null_text_val(con0,x[8]),
+                null_text_val(con0,x[9]),
+                as.numeric(input$survey),
+                "(SELECT id FROM imp)")
+              ,collapse=","),")")
+          })
+          
+          q <- paste0(
+                      "WITH imp AS (",q0,") \n",
+                      q1,
+                      paste(Q,collapse=", \n"),"\n RETURNING plot_reference_visit")
+          plot_reference_visits <- dbGetQuery(con0,q)        
+          
+          if(isTruthy(plot_reference_visits)){
+            
+            # INSERT SPECIS DATA
+            # HANDLE DUPLICATED SPECIES ENTRIES !!!
+            # MAKE SURE NUMBER OF COLUMNS MATCH NUMBER OF VISITS !!!
+            # Are the plots refs definitely going to be in the right order?!
+            spp <- rv$df1[11:nrow(rv$df1),-c(2)]
+            rownames(spp) <- spp[,1]
+            spp <- spp[,-1]
+            colnames(spp) <- plot_reference_visits$plot_reference_visit
+            spp <- dematrify(as.data.frame(t(spp)) )
+            ab <- c("domin","cover","frequency","presence")[which(c("Domin","Percentage cover","Frequency","Presence") == input$abundance)] # choose name for abundance column following plot_data column names
+            colnames(spp)<-c("plot_reference_visit","taxon_nbn",paste0("abundance_",ab)) # Column names of dataframe to match plot_data table column names
+            
+            pgWriteGeom(con0,name=c("records","plot_data"),data.obj = spp, partial.match = T, overwrite = F)
+            dbDisconnect(con0)
+            return(TRUE)
+          }else{
+            dbDisconnect(con0)
+            return(FALSE)
+          }
+            
+        })%...>% (function(r){
+          if(r){
+            showModal(import_success_modal())
+          }else{
+            showModal(import_error_modal())
+          }
+
+        })
+        })
+      
+      #Modal for upload progress
+      import_progress_modal <- function() {
+        ns <- session$ns
+        modalDialog(
+          div(
+            tags$h4("Importing",class="loading")
+            ,style="width:100%; text-align:left")
+          , footer=NULL,size="s",easyClose=FALSE,fade=TRUE)
+      }
+      
+      #Modal for upload success
+      import_success_modal <- function() {
+        ns <- session$ns
+        modalDialog(
+          div(
+            h4("Data successfully imported")
+            ,style="width:100%; text-align:center")
+          , footer=NULL,size="s",easyClose=TRUE,fade=TRUE)
+      }
+      
+      #Modal for upload error
+      import_error_modal <- function() {
+        ns <- session$ns
+        modalDialog(
+          div(
+            h4("Import error")
+            ,style="width:100%; text-align:center")
+          , footer=NULL,size="s",easyClose=TRUE,fade=TRUE)
+      }
+      
     }
   )
 }
+
+
+
