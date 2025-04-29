@@ -370,6 +370,7 @@ importRecordsServer <- function(id, login, tables) {
         
         if(identical(colnames(d), colnames(x0)) == TRUE){
           # validate input
+          d[d==""] <- NA
           d$gridref <- as.character(d$gridref)
           d$gridref <- apply(d[c("gridref")],1,function(g)toupper(gsub(" ","",blank(g))))
           d$site_record <- as.character(d$site_record)
@@ -1102,18 +1103,19 @@ importRecordsServer <- function(id, login, tables) {
           d$survey <- as.numeric(input$survey)
           
           # Lookup sites and taxa
-          s <- d %>% left_join(rv$df_s, 
+          d <- d %>% left_join(rv$df_s, 
                                join_by(site_record, gridref), na_matches = "na")
           
-          d$site <- as.numeric(s$id_match)
+          d$site <- as.numeric(d$id_match)
           
-          t <- d %>% left_join(rv$df_t,
+          d <- d %>% left_join(rv$df_t,
                                join_by(taxon_record,taxon_nbn), na_matches = "na")        
-          d$taxon_nbn <- t$tvk_match
+          d$taxon_nbn <- d$tvk_match
           
           d <- d[,c(cols_upload,"site","survey")]
-          d <- d[!is.na(d$site) & !is.na(d$taxon_nbn),] # Drop unmatched sites and taxa
           
+          d <- d[!is.na(d$site) | !is.na(d$taxon_nbn),] # Drop unmatched sites and taxa
+         
           future_promise({
           
           con <- fenDb0(user,password)
@@ -1131,7 +1133,6 @@ importRecordsServer <- function(id, login, tables) {
                        NULL, # don't need geometry or attachment parameters
                        NULL,
                        NULL)
-          
           dbDisconnect(con)
           return(i)
           })%...>%(function(i){
