@@ -1566,6 +1566,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         choices_p <- p[,"id"]
         names(choices_p) <- p[,"project"]
         
+        updateSelectizeInput(session, "status_0", selected="open")
+        
         updateSelectizeInput(session, "survey_type_0", choices = choices_st)
         updateSelectizeInput(session, "project_0", choices = choices_p)
         updateSelectizeInput(session, "sharing_0", choices = choices_sh)
@@ -1574,6 +1576,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         shinyjs::hide("created_date_0")
         shinyjs::hide("last_edited_user_0")
         shinyjs::hide("last_edited_date_0")
+        
+        shinyjs::disable("status_0")
         
         shinyjs::enable("survey_0")
         shinyjs::enable("survey_type_0")
