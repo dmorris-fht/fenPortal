@@ -5,6 +5,30 @@ names(match_choices_sites) <- c("All","No matches","Uniquely matched","Ambiguous
 
 match_choices_taxa <- match_choices_sites[1:4]
 
+# import validation function
+
+import_validation <- function(x){
+  prod(
+    isGridref(x[[1]]) || !isTruthy(x[[1]]), # gridref
+    IsDate(x[[2]]) || !isTruthy(x[[2]]), # date
+    
+    year_check(x[[3]]), # record year
+    
+    IsDate(x[[4]]) || !isTruthy(x[[4]]), # start date
+    IsDate(x[[5]]) || !isTruthy(x[[5]]), # end date
+    (IsDate(x[[4]]) && IsDate(x[[5]]) && (as.Date(x[[4]], "%d/%m/%Y") <= as.Date(x[[5]], "%d/%m/%Y"))) || !isTruthy(x[[4]]) || !isTruthy(x[[5]]), # date range
+    year_check(x[[6]]), # start year
+    year_check(x[[7]]), # end year
+    (year_check(x[[6]]) && year_check(x[[7]]) && as.numeric(x[[6]]) <= as.numeric(x[[7]])) || !isTruthy(x[[6]]) || !isTruthy(x[[7]]), # year range
+    month_check(x[[8]]), # start month
+    month_check(x[[9]]), # end month
+    (month_check(x[[8]]) && month_check(x[[9]]) && ( (x[[6]] == x[[7]] && as.numeric(x[[8]]) <= as.numeric(x[[9]])) ||  x[[6]] != x[[7]] ) ) || !isTruthy(x[[8]]) || !isTruthy(x[[9]]), # month range
+    isTruthy(x[[1]]) || isTruthy(x[[10]]), # gridref and site not both null
+    isTruthy(x[[11]]) || isTruthy(x[[12]]) # nbn tvk or taxon name given
+  )
+}
+
+
 # Import UI
 
 importRecordsUI <- function(id){
@@ -267,6 +291,7 @@ importRecordsServer <- function(id, login, tables) {
                                    dom = 'tlpi',
                                    language = list(zeroRecords = "No sites"),
                                    columnDefs = list(
+                                     list(targets = -1,searchable = FALSE),
                                      list(orderable = FALSE, targets = c(ncol(x2)-1)),
                                      list(width = '60px',targets=c(ncol(x2)-1))
                                    ),
@@ -317,6 +342,7 @@ importRecordsServer <- function(id, login, tables) {
                                    dom = 'tlpi',
                                    language = list(zeroRecords = "No taxa"),
                                    columnDefs = list(
+                                     list(targets = -1,searchable = FALSE),
                                      list(orderable = FALSE, targets = 2),
                                      list(visible = FALSE, targets = 3),
                                      list(width = '60px',targets=c(2))
@@ -437,7 +463,7 @@ importRecordsServer <- function(id, login, tables) {
       
       observe({
         req(rv$df)
-        if(sum(rv$df$valid) == nrow(rv$df)){
+        if(sum(rv$df$valid) == nrow(rv$df) & nrow(rv$df) > 0){
           # Only show this modal if on the import tab - otherwise it appears when 
           # sites / taxa are edited in the match tables on subsequent tabs
           if(input$importTabset == "importPanel"){
@@ -465,6 +491,7 @@ importRecordsServer <- function(id, login, tables) {
         
         ## Run the matching ----
       observeEvent(input$match,{
+        req(nrow(rv$df) > 0)
         req(sum(rv$df$valid) == nrow(rv$df))
         
         showSpinner("matchSitesTable")
@@ -1089,10 +1116,10 @@ importRecordsServer <- function(id, login, tables) {
        
           # Format data for upload
           
-          d$record_date <- as.Date(d$record_date, "%d/%m/%y")
+          d$record_date <- as.Date(d$record_date, "%d/%m/%Y")
           d$recordyear <- as.numeric(d$record_year)
-          d$record_date_start <- as.Date(d$record_date_start, "%d/%m/%y")
-          d$record_date_end <- as.Date(d$record_date_end, "%d/%m/%y")
+          d$record_date_start <- as.Date(d$record_date_start, "%d/%m/%Y")
+          d$record_date_end <- as.Date(d$record_date_end, "%d/%m/%Y")
           d$start_year <- as.numeric(d$start_year)
           d$end_year <- as.numeric(d$end_year)
           d$start_month <- as.numeric(d$start_month)
@@ -1114,7 +1141,7 @@ importRecordsServer <- function(id, login, tables) {
           
           d <- d[,c(cols_upload,"site","survey")]
           
-          d <- d[!is.na(d$site) | !is.na(d$taxon_nbn),] # Drop unmatched sites and taxa
+          d <- d[!is.na(d$site) & !is.na(d$taxon_nbn),] # Drop unmatched sites and taxa
          
           future_promise({
           
