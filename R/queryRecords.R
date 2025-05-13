@@ -413,7 +413,8 @@ queryRecordsServer <- function(id, login, tables) {
                              options = list(
                                placeholder = 'Select one or more sites'
                              )
-        )
+        )})
+      observe({
         updateSelectizeInput(session,
                              "county",
                              choices=choices_county(), 
