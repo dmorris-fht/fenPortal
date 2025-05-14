@@ -1364,19 +1364,19 @@ enterRecordsServer <- function(id, login, tables, tab) {
             )
           )
           con <- fenDb0(user,password)
-          insert <- pgWriteGeom(con, 
+          insert <- pgWriteGeom(con,
                                 name = c("records","records"),
-                                data.obj = d$data[,1:28],
+                                data.obj = d$data[,1:31],
                                 partial.match = TRUE,
                                 overwrite = FALSE,
                                 upsert.using = "guid"
                                 )
-          
+
           dbDisconnect(con)
           return(insert)
           })%...>% (function(insert) {
             
-            if(insert == TRUE){
+            if(insert){
               d$data$in_db <- 1
               showModal(
                 modalDialog(
