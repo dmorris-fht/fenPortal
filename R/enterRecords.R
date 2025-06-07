@@ -759,8 +759,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
           shinyjs::enable('status')
         }
         if(input$status_check == 1){
-          shinyjs::disablevalue
-          updateTextInput(session,'status',selected = input$status)}
+          shinyjs::disable('status')
+          updateSelectizeInput(session,'status',selected = input$status)}
       })
       observeEvent(input$sex_check,{
         if(input$sex_check == 0){
@@ -988,7 +988,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
           
           updateTextInput(session,'gridref', value = d$data[a,c('gridref')])
           updateTextInput(session,'quantity', value = d$data[a,c('quantity')])
-          updateTextInput(session,'status', value = d$data[a,c('status')])
+          updateSelectizeInput(session,'status', selected = d$data[a,c('status')])
           updateTextInput(session,'sex', value = d$data[a,c('sex')])
           updateTextInput(session,'stage', value = d$data[a,c('stage')])
           updateTextInput(session,'note', value = d$data[a,c('note')])
@@ -1166,7 +1166,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
           updateTextInput(session,'quantity',value =NA)
         }
         if(input$status_check == 0){
-          updateTextInput(session,'status',value =NA)
+          updateSelectizeInput(session,'status',selected =NA)
         }
         if(input$sex_check == 0){
           updateTextInput(session,'sex',value =NA)
