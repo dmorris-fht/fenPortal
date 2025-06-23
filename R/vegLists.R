@@ -55,11 +55,13 @@ vegListsServer <- function(id, tables) {
       # Module initialisation ----
       isolate({
         app_tables(tables, c("sites","plots"))
+        uksi_load(c(0))
         })
       
       observe({
         req(tables$sites)
         req(tables$plots)
+        req(uksi_full)
         
         runjs(
           paste0(
@@ -166,30 +168,25 @@ vegListsServer <- function(id, tables) {
         
         future_promise({
           con0 <- poolCheckout(con_global)
-          q1 <- paste0("SELECT d.plot_reference_visit, u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS att,
+          q1 <- paste0("SELECT d.plot_reference_visit, d.taxon_nbn AS att,
                       d.abundance_domin AS value
                       FROM
                         spatial.monitoring_vegetation p,
                         records.plot_data d,
-                        records.plot_visits v,
-                        lookups.uksi u
-                      WHERE
+                        records.plot_visits v
+                        WHERE
                         p.plot_reference = v.plot_reference AND
                         v.plot_reference_visit = d.plot_reference_visit AND
-                        u.nbn_taxon_version_key = d.taxon_nbn AND
                         p.site = ",s, " ORDER BY d.plot_reference_visit, att"
                        )
-          q2 <- paste0("SELECT d.plot_reference_visit, u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS att,
-                      d.abundance_domin AS value
+          q2 <- paste0("SELECT d.plot_reference_visit, d.taxon_nbn AS att , d.abundance_domin AS value
                       FROM
                         spatial.monitoring_vegetation p,
                         records.plot_data d,
-                        records.plot_visits v,
-                        lookups.uksi u
+                        records.plot_visits v
                       WHERE
                         p.plot_reference = v.plot_reference AND
-                        v.plot_reference_visit = d.plot_reference_visit AND
-                        u.nbn_taxon_version_key = d.taxon_nbn AND ",
+                        v.plot_reference_visit = d.plot_reference_visit AND " ,
                         sql_in("p.plot_reference",p), " 
                        ORDER BY d.plot_reference_visit, att"
                        )
@@ -225,15 +222,24 @@ vegListsServer <- function(id, tables) {
           v <- result$v
           if(isTruthy(d) && nrow(d) > 0){
             d <- unique(d)
-
             v$record_date <- as.character(v$record_date)
             v2 <- gather(v, key="att",value = "value", 2:13, na.rm = TRUE)
-            
             d2 <- rbind(v2,d)
             levels <- c(unique(v2$att),sort(unique(d$att)))
             d2$att <- factor(d2$att, levels = levels)
             
             p <- spread(d2, key = "plot_reference_visit", value = "value")
+            
+            p$att <- as.character(p$att)
+            rownames(p) <- p$att
+            
+            nbn <- p[9:nrow(p),"att"]
+            taxon_names <- uksi_full[uksi_full$nbn_taxon_version_key %in% nbn ,c("nbn_taxon_version_key","name")]
+            taxon_names <- taxon_names[match(nbn ,taxon_names$nbn_taxon_version_key),"name"]
+            
+            p[9:nrow(p),"att"] <- taxon_names
+            
+            p[9:nrow(p),] <- p[9:nrow(p),] %>% arrange(att)
             
             name <- paste0(tables$sites[tables$sites$id == as.numeric(input$site), c("site")], " veg ",format(Sys.time(),format="%Y%m%d%H%M%S"))
             
