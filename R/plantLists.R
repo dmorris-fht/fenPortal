@@ -177,7 +177,7 @@ plantListsServer <- function(id, tables) {
       observeEvent(input$run,{
         future_promise({
           con0 <- poolCheckout(con_global)
-          q1 <- paste0("SELECT u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS taxon,
+          q1 <- paste0("SELECT r.taxon_nbn, u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS taxon,
                       ss.subsite AS subsite, 
                       IIF(array_max(ARRAY[
                         MAX(EXTRACT(YEAR FROM r.record_date)),
@@ -211,9 +211,9 @@ plantListsServer <- function(id, tables) {
                       u.informal_group IN ('stonewort','flowering plant','conifer','clubmoss','hornwort','horsetail','quillwort','fern','moss','liverwort') AND
                       r.site = ",input$site," AND ",
                       sql_in("r.subsite",input$subsite),
-                      " GROUP BY ss.subsite, taxon"
+                      " GROUP BY ss.subsite, taxon_nbn, taxon"
           )
-          q2 <- paste0("SELECT u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS taxon,
+          q2 <- paste0("SELECT r.taxon_nbn, u.taxon_name || ' ' || IIF(u.taxon_qualifier IS NULL, '',u.taxon_qualifier) AS taxon,
                       NULL AS subsite, 
                       IIF(array_max(ARRAY[
                         MAX(EXTRACT(YEAR FROM r.record_date)),
@@ -244,7 +244,7 @@ plantListsServer <- function(id, tables) {
                       (r.verification < 2 OR r. verification IS NULL) AND 
                       u.informal_group IN ('stonewort','flowering plant','conifer','clubmoss','hornwort','horsetail','quillwort','fern','moss','liverwort') AND
                       r.site = ",input$site,
-                       " GROUP BY taxon"
+                       " GROUP BY taxon_nbn, taxon"
           )
           if(!isTruthy(input$subsite)){
             q3 <- q2
