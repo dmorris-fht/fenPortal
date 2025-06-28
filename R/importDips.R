@@ -132,8 +132,14 @@ dipsImportServer <- function(id,login,tables) {
         app_tables(tables, c("hydro_installs"))
       })
       
+      dips_null <- NULL
+      
       observe({
         req(tables$hydro_installs)
+        
+        con0 <- poolCheckout(con_global)
+        dips_null <<- dbGetQuery(con0,"SELECT * FROM lookups.lookup_dips_null")
+        poolReturn(con0)
         
         runjs(
           paste0(
@@ -400,6 +406,14 @@ dipsImportServer <- function(id,login,tables) {
               
               # Check cols contain valid data
               
+              print(dips_null$code)
+              print(sum(apply(import$data[c("dip_date_time")],1,function(x){!IsDate(x,"%Y-%m-%d %H:%M")})) == 0)
+              print(sum(apply(import$data[c("dip_depth_top")],1,
+                              function(x){
+                                !(is.numeric(x) ||
+                                    is.na(x))
+                              })) == 0)
+              print( sum(!(import$data$dip_null %in% c(NA,as.integer(dips_null$code)))) == 0 )
               
               if(
                 isTruthy(import$data) &&
@@ -410,7 +424,7 @@ dipsImportServer <- function(id,login,tables) {
                             !(is.numeric(x) ||
                               is.na(x))
                           })) == 0 &&
-                sum(!(import$data$dip_null %in% c(NA,0,1,2,3,4,5,6))) == 0 
+                sum(!(import$data$dip_null %in% c(NA,as.integer(dips_null$code)))) == 0 
                 
               ){
                 import$csv <- 1
