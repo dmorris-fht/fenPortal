@@ -406,15 +406,6 @@ dipsImportServer <- function(id,login,tables) {
               
               # Check cols contain valid data
               
-              print(dips_null$code)
-              print(sum(apply(import$data[c("dip_date_time")],1,function(x){!IsDate(x,"%Y-%m-%d %H:%M")})) == 0)
-              print(sum(apply(import$data[c("dip_depth_top")],1,
-                              function(x){
-                                !(is.numeric(x) ||
-                                    is.na(x))
-                              })) == 0)
-              print( sum(!(import$data$dip_null %in% c(NA,as.integer(dips_null$code)))) == 0 )
-              
               if(
                 isTruthy(import$data) &&
                 (nrow(import$data) > 0) &&
