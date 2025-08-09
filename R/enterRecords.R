@@ -853,6 +853,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
       observeEvent(input$survey_check,{
         if(input$survey_check == 0){
           shinyjs::enable('survey')
+          shinyjs::enable("new_survey")
         }
         if(input$survey_check == 1){
           shinyjs::disable('survey')
@@ -933,9 +934,11 @@ enterRecordsServer <- function(id, login, tables, tab) {
 
       output$recordsTable <- DT::renderDT(
         {
-          isolate(
-            d$data[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
-          )
+          x <- isolate(d$data)
+          
+          x[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
+            
+          
         }
         ,
         server = TRUE,
@@ -1655,14 +1658,14 @@ enterRecordsServer <- function(id, login, tables, tab) {
           return(insert)
         })%...>%(function(i){
           if(isTruthy(i)){
-            row <- list(
+            row <- c(
               as.numeric(i$id),
               input$survey_0,
               as.numeric(input$survey_type_0),
-              as.Date(input$start_date_0),
-              as.Date(input$end_date_0),
-              as.numeric(ifelse(isTruthy(input$start_year_0),input$start_year_0,NA)),
-              as.numeric(ifelse(isTruthy(input$end_year_0),input$end_year_0,NA)),
+              ifelse(isTruthy(input$start_date_0),as.Date(input$start_date_0),NA),
+              ifelse(isTruthy(input$end_date_0),as.Date(input$end_date_0),NA),
+              ifelse(isTruthy(input$start_year_0),as.numeric(input$start_year_0),NA),
+              ifelse(isTruthy(input$end_year_0),as.numeric(input$end_year_0),NA),
               input$source_0,
               as.numeric(input$project_0),
               as.numeric(input$sharing_0),
@@ -1671,14 +1674,16 @@ enterRecordsServer <- function(id, login, tables, tab) {
               input$url_0,
               i$created_user,
               NA,
-              as.Date(i$created_date),
               NA,
+              NA,
+              "open",
               st[st$code == as.numeric(input$survey_type_0),c("description")],
               sh[sh$code == as.numeric(input$sharing_0),c("description")],
               tables$projects[tables$projects$id == as.numeric(input$project_0),c("project")]
             )
-
+            
             tables$surveys[nrow(tables$surveys)+1,] <- row
+            tables$surveys[nrow(tables$surveys),"created_date"] <- i$created_date # Including this in previous line causes error with as.Posixct.character
             
             showModal(
               modalDialog(
