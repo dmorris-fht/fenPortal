@@ -167,16 +167,16 @@ dashboardPage(
               )
       )
       ,
-      tabItem(tabName = "spIntro",
-              fluidRow(
-                spIntroUI("spIntros")
-              )
-      )
-      ,
+      # tabItem(tabName = "spIntro",
+      #         fluidRow(
+      #           spIntroUI("spIntros")
+      #         )
+      # )
+      # ,
       
       tabItem(tabName = "explore",
                 fluidRow(
-                  exploreUI("exploreHydro")
+                  #  exploreUI("exploreHydro")
                 )
               ),
       tabItem(tabName = "installsManage",

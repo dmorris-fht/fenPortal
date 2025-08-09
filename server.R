@@ -1,3 +1,4 @@
+options(shiny.maxRequestSize=30*1024^2)
 
 function(input, output, session) {
   addResourcePath("tempdir", tempdir())
@@ -214,11 +215,11 @@ function(input, output, session) {
       })
       
       # Initialise spIntro  ----
-      observe({
-        if(n$spIntro == 1){
-          spIntroServer("spIntro", login, tables)
-        }
-      })
+      # observe({
+      #   if(n$spIntro == 1){
+      #     spIntroServer("spIntro", login, tables)
+      #   }
+      # })
       
       # Initialise dataSharing  ----
       observe({

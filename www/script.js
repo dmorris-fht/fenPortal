@@ -7,10 +7,13 @@ function get_id(clicked_id) {
     Shiny.setInputValue("enterRecords-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("importRecords-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("vegManage-current_id", clicked_id, {priority: "event"});
+    Shiny.setInputValue("transloc-current_id", clicked_id, {priority: "event"});
         
     Shiny.setInputValue("dataSharing-current_id", clicked_id, {priority: "event"});
+    
     Shiny.setInputValue("installsManage-current_id", clicked_id, {priority: "event"});
     Shiny.setInputValue("loggersManage-current_id", clicked_id, {priority: "event"});
+    Shiny.setInputValue("logsImport-current_id", clicked_id, {priority: "event"});
   }
 
 // Login controls
@@ -61,7 +64,8 @@ function openImg(data){
   let w = window.open('about:blank');
   let image = new Image();
   image.src = data;
-  image.style.maxHeight = "100%";
+  image.style.resize = 'both';
+  image.style.overflow = 'both';
   setTimeout(function(){
     w.document.getElementsByTagName('body')[0].innerHTML = image.outerHTML;
   }, 0);
