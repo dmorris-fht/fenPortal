@@ -3,7 +3,6 @@ library(shiny)
 library(shinyjs)
 library(shinydashboard)
 library(shinycssloaders)
-#library(shinydisconnect) # Not in use
 library(DT)
 library(shinyvalidate)
 
@@ -35,6 +34,8 @@ library(geojsonsf) #?
 library(jsonlite)
 library(magick) # seems to have installed
 library(labdsv)
+library(scales) # NEEDS INSTALLING ON SERVER
+
 
 #library(slickR) # Not in use
 library(base64enc)
@@ -45,7 +46,6 @@ library(DBI) # Don't need this too?
 library(pool)
 
 # No longer in use
-library(scales) #?
 library(readr)
 library(RPostgres)
 
@@ -105,7 +105,7 @@ sql_in <- function(x,v){
         paste0(x, " IN ",con_sql_string(v))
              )
     }
-    if(class(v)=="numeric"){
+    if(class(v)=="numeric" | class(v)=="integer"){
       return(
         paste0(x, " IN ",con_sql_num(v))
       )
@@ -486,26 +486,7 @@ gf_sf <- function(g){
       }
 }
 
-import_validation <- function(x){
-  prod(
-    isGridref(x[[1]]) || !isTruthy(x[[1]]), # gridref
-    IsDate(x[[2]]) || !isTruthy(x[[2]]), # date
-    
-    year_check(x[[3]]), # record year
-    
-    IsDate(x[[4]]) || !isTruthy(x[[4]]), # start date
-    IsDate(x[[5]]) || !isTruthy(x[[5]]), # end date
-    (IsDate(x[[4]]) && IsDate(x[[5]]) && (as.Date(x[[4]], "%d/%m/%Y") <= as.Date(x[[5]], "%d/%m/%Y"))) || !isTruthy(x[[4]]) || !isTruthy(x[[5]]), # date range
-    year_check(x[[6]]), # start year
-    year_check(x[[7]]), # end year
-    (year_check(x[[6]]) && year_check(x[[7]]) && as.numeric(x[[6]]) <= as.numeric(x[[7]])) || !isTruthy(x[[6]]) || !isTruthy(x[[7]]), # year range
-    month_check(x[[8]]), # start month
-    month_check(x[[9]]), # end month
-    (month_check(x[[8]]) && month_check(x[[9]]) && ( (x[[6]] == x[[7]] && as.numeric(x[[8]]) <= as.numeric(x[[9]])) ||  x[[6]] != x[[7]] ) ) || !isTruthy(x[[8]]) || !isTruthy(x[[9]]), # month range
-    isTruthy(x[[1]]) || isTruthy(x[[10]]), # gridref and site not both null
-    isTruthy(x[[11]]) || isTruthy(x[[12]]) # nbn tvk or taxon name given
-    )
-}
+
 
 # Functions for adding row buttons to DT ----
 
@@ -865,7 +846,6 @@ import_table <- function(con,
         ",",imp,")"
                )
       }
-  
 
   # Form the insert string with and without attachments
   if(import_attach & isTruthy(attach)){
@@ -1301,7 +1281,7 @@ uksi_load <- function(x){
     
     #string_fspp <<- paste0("('",paste(fspp$nbn_taxon_version_key_for_recommended_name,collapse="','"),"')") # OLD VERSION WITHOUT DESCENDENTS
     string_fspp <<- paste0("(",taxon_desc(fspp$nbn_taxon_version_key_for_recommended_name),")")
-    
+
     # string_afspp <<- fspp[which(fspp$alkaline_fen == TRUE),"nbn_taxon_version_key_for_recommended_name"]
     # string_afspp <<- paste0("('",paste(string_afspp,collapse="','"),"')")
     
