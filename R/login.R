@@ -88,24 +88,25 @@ loginServer <- function(id, login) {
           if("azure_pg_admin" %in% roles$rolname){
             login$role <- "cru"
             login$admin <- TRUE
-          }
-          if("fen_create_read_update" %in% roles$rolname){
-            login$role <- "cru"
-          }
-          if("fen_create_read" %in% roles$rolname){
-            login$role <- "cr"
-            runjs("$('.cru').remove()")
-          }
-          if("fen_read" %in% roles$rolname){
-            login$role <- "r"
-            runjs("$('.cru').remove()")
-            runjs("$('.cr').remove()")
+          }else{
+            if("fen_create_read_update" %in% roles$rolname){
+              login$role <- "cru"
+            }else{
+              if("fen_create_read" %in% roles$rolname){
+                login$role <- "cr"
+                runjs("$('.cru').remove()")
+              }
+              else if("fen_read" %in% roles$rolname){
+                login$role <- "r"
+                runjs("$('.cru').remove()")
+                runjs("$('.cr').remove()")
+                
+                #runjs("$(\"[data-expanded='manageMenu']\").closest(\".treeview\").remove()")
+                runjs("$(\"[data-expanded='importMenu']\").closest(\".treeview\").remove()")
+              }
+            }
             
-            #runjs("$(\"[data-expanded='manageMenu']\").closest(\".treeview\").remove()")
-            runjs("$(\"[data-expanded='importMenu']\").closest(\".treeview\").remove()")
           }
-          
-          
           shinyjs::hide(id = "login")
           shinyjs::hide("loader")
           
