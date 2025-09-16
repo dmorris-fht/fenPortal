@@ -53,8 +53,8 @@ survey_modal_dialog <- function(session, d, mode, qual) {
               dateInput(
                 inputId = ns(paste0("start_date",qual)),
                 label = "Start date (e.g. survey start date):",
-                value = format(d[3],format = "%Y-%m-%d %H:%M:%S"),
-                format = "dd/mm/yyyy"
+                value = format(d[3],format = "%Y-%m-%d %H:%M"),
+                format = "yyyy-mm-dd"
               )
               ),
           column(6,
@@ -71,8 +71,8 @@ survey_modal_dialog <- function(session, d, mode, qual) {
               dateInput(
                 inputId = ns(paste0("end_date",qual)),
                 label = "End date (e.g. survey end date, publication date):",
-                value = format(d[4],format = "%Y-%m-%d %H:%M:%S"),
-                format = "dd/mm/yyyy"
+                value = format(d[4],format = "%Y-%m-%d %H:%M"),
+                format = "yyyy-mm-dd"
               )
               ),
           column(6,
