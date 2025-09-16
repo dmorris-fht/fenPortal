@@ -1668,8 +1668,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
               as.numeric(i$id),
               input$survey_0,
               as.numeric(input$survey_type_0),
-              ifelse(isTruthy(input$start_date_0),as.Date(input$start_date_0,format="%Y-%m-%d"),NA),
-              ifelse(isTruthy(input$end_date_0),as.Date(input$end_date_0,format="%Y-%m-%d"),NA),
+              NA,
+              NA,
               ifelse(isTruthy(input$start_year_0),as.numeric(input$start_year_0),NA),
               ifelse(isTruthy(input$end_year_0),as.numeric(input$end_year_0),NA),
               input$source_0,
@@ -1689,6 +1689,9 @@ enterRecordsServer <- function(id, login, tables, tab) {
             )
             
             tables$surveys[nrow(tables$surveys)+1,] <- row
+            print(input$start_date_0)
+            tables$surveys[nrow(tables$surveys),"start_date"] <- ifelse(isTruthy(input$start_date_0),as.Date(input$start_date_0,format="%Y-%m-%d"),NA)
+            tables$surveys[nrow(tables$surveys),"end_date"] <- ifelse(isTruthy(input$end_date_0),as.Date(input$end_date_0,format="%Y-%m-%d"),NA)
             tables$surveys[nrow(tables$surveys),"created_date"] <- as.POSIXct(i$created_date,format="%Y-%m-%d %H:%M") # Including this in previous line causes error with as.Posixct.character
             
             
