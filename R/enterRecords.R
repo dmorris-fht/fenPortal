@@ -1052,7 +1052,11 @@ enterRecordsServer <- function(id, login, tables, tab) {
         req(isTruthy(input$survey))
         req(gfv()$error == 0)
         
+        d$data <- d$data[!is.na(d$data$site) & !is.na(d$data$taxon_nbn) & !is.na(d$data$survey) ,]
+        
         add_record()
+        
+        d$data <- d$data[!is.na(d$data$site) & !is.na(d$data$taxon_nbn) & !is.na(d$data$survey) ,]
       })
       
       add_record <- function(){
@@ -1366,6 +1370,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
               ,footer=NULL,size="s",easyClose=FALSE,fade=TRUE
             )
           )
+          d$data <- d$data[!is.na(d$data$site) & !is.na(d$data$taxon_nbn) & !is.na(d$data$survey) ,]
+          
           con <- fenDb0(user,password)
           insert <- pgWriteGeom(con,
                                 name = c("records","records"),
