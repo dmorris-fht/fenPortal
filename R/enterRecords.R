@@ -1689,7 +1689,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
             )
             
             tables$surveys[nrow(tables$surveys)+1,] <- row
-            tables$surveys[nrow(tables$surveys),"created_date"] <- i$created_date # Including this in previous line causes error with as.Posixct.character
+            tables$surveys[nrow(tables$surveys),"created_date"] <- as.POSIXct(i$created_date,format="%Y-%m-%d %H:%M") # Including this in previous line causes error with as.Posixct.character
             
             showModal(
               modalDialog(

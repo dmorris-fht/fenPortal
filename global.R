@@ -1217,6 +1217,7 @@ app_tables <- function(tables,t){
     }
     if("surveys" %in% t && !isTruthy(tables$surveys)){
       tables$surveys <- r$surveys
+      tables$surveys$created_date <- as.POSIXct(tables$surveys$created_date,format="%Y-%m-%d %H:%M:%OS")
       a <- a + 1
     }
     if("projects" %in% t && !isTruthy(tables$projects)){
