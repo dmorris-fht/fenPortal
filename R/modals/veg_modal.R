@@ -431,4 +431,6 @@ visit_modal <- function(session,p,v,vd0,vd1,d,edit,s) {
   
   shinyjs::reset("add_photo")
   
+  
+  
 }

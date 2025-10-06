@@ -74,6 +74,11 @@ vegManageUI <- function(id){
     )
   }
 
+# Bugs
+# - Inconsistent behaviour. Visit modal first time opened, the submit button disabled even after adding a photo. If closed and re-opened, the submit button is enabled. But this is not consistent.
+# - After a few of photo submissions, submission then starts hanging. No clear pattern, sometimes second, sometimes others. File size or other issue? Not consistent. Not sure if it's a photo thing or an issue with another issue hidden in a future.
+
+
 vegManageServer <- function(id, login, tables, tab) {
   moduleServer(
     id,
@@ -954,12 +959,14 @@ vegManageServer <- function(id, login, tables, tab) {
         
         # Update
         if(!is.null(input$current_id) && stringr::str_detect(input$current_id, pattern = "edit") && rv$add_or_edit == 0){
-          req(change() > 0)
+          print(change())
+          #req(change() > 0)
           v <- rv$df_ph_v[!is.na(rv$df_ph_v$edit),] # Edited photos & remove id col
           v <- v[,-c(1)]
           
           future_promise({
             con0 <- fenDb0(user,password)
+            print("here1?")
             q <- paste0("UPDATE records.plot_visits
                         SET
                             survey = ",as.numeric(input$survey),",
@@ -1001,8 +1008,9 @@ vegManageServer <- function(id, login, tables, tab) {
             r <- list(error = NA, visits = NA, photos = NA, photos_u = NA)
               
             r$visits <- dbGetQuery(con0,q)
-
+            print("here2?")
             if(isTruthy(v) && nrow(v) > 0){
+              print("here3?")
               ph <- which(!is.na(v$file)) # New photos
               ed <- which(is.na(v$file))
               u1 <- TRUE
@@ -1010,7 +1018,7 @@ vegManageServer <- function(id, login, tables, tab) {
               if(isTruthy(ph)){        # Compress new photos
                 d <- 2000
                 sz <- 500
-
+                
                 for(i in 1:length(ph)){
                   f <- v[i,c("file")]
                   img <- image_read(f)
@@ -1033,15 +1041,18 @@ vegManageServer <- function(id, login, tables, tab) {
                                   overwrite = FALSE,
                                   upsert.using = "guid"
                                   )
+                print("success1!")
               }
               if(isTruthy(ed)){
+                print("here4?")
                 u2 <- pgWriteGeom(con0,
                                   name = c("records","plot_visits_attach"),
                                   data.obj = v[ed,-which(colnames(v) %in% c("att"))],
                                   partial.match = TRUE,
                                   overwrite = FALSE,
                                   upsert.using = "guid"
-                )
+                                  )
+                print("success2!")
               }
               
               v$att <- NA # Remove binary data so just storing base64 data
@@ -1061,6 +1072,7 @@ vegManageServer <- function(id, login, tables, tab) {
                 )
               })
             }else{
+              print("success3!")
               u <- r$visits
               rv$df_v[rv$df_v$plot_reference_visit == rv$v,c(1:ncol(u))] <- u
               
@@ -1086,6 +1098,7 @@ vegManageServer <- function(id, login, tables, tab) {
               }
           })
           }else{
+            print("Not here!?")
         # New visit
             v <- rv$df_ph_v[,-c(1)] # Photos to insert, remove id column
             future_promise({
@@ -1215,6 +1228,8 @@ vegManageServer <- function(id, login, tables, tab) {
                             last_edited_date,
                             guid
                           FROM records.plot_visits WHERE id = ",r$visits))
+                poolReturn(con0)
+                
                 i <- add_btns(row,role,"visits")
                 rv$df_v <- rbind(rv$df_v, i)
                 
@@ -1234,7 +1249,7 @@ vegManageServer <- function(id, login, tables, tab) {
                       rv$df_ph <- v[,-which(colnames(rv$df_ph) %in% c("Buttons","edit"))]
                     }
                   }
-                  poolReturn(con0)
+                  
               }
             })
             }
@@ -1678,6 +1693,12 @@ vegManageServer <- function(id, login, tables, tab) {
               x$edit <- NA
               rv$df_ph_v <- x
           }
+        }else{
+          rv$df_ph_v <- data.frame(
+            "att_name" = character(),
+            "att_size" = numeric(),
+            "Buttons" = character()
+          )
         }
       }
 
