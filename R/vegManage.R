@@ -957,16 +957,15 @@ vegManageServer <- function(id, login, tables, tab) {
           )
         )
         
-        # Update
+        ## Update visit ----
+       
         if(!is.null(input$current_id) && stringr::str_detect(input$current_id, pattern = "edit") && rv$add_or_edit == 0){
-          print(change())
-          #req(change() > 0)
+          req(change() > 0)
           v <- rv$df_ph_v[!is.na(rv$df_ph_v$edit),] # Edited photos & remove id col
           v <- v[,-c(1)]
           
           future_promise({
             con0 <- fenDb0(user,password)
-            print("here1?")
             q <- paste0("UPDATE records.plot_visits
                         SET
                             survey = ",as.numeric(input$survey),",
@@ -1005,12 +1004,10 @@ vegManageServer <- function(id, login, tables, tab) {
                             last_edited_date,
                             guid")
             
-            r <- list(error = NA, visits = NA, photos = NA, photos_u = NA)
+            r <- list(visits = NA, photos = NA, photos_u = NA)
               
             r$visits <- dbGetQuery(con0,q)
-            print("here2?")
             if(isTruthy(v) && nrow(v) > 0){
-              print("here3?")
               ph <- which(!is.na(v$file)) # New photos
               ed <- which(is.na(v$file))
               u1 <- TRUE
@@ -1041,10 +1038,8 @@ vegManageServer <- function(id, login, tables, tab) {
                                   overwrite = FALSE,
                                   upsert.using = "guid"
                                   )
-                print("success1!")
               }
               if(isTruthy(ed)){
-                print("here4?")
                 u2 <- pgWriteGeom(con0,
                                   name = c("records","plot_visits_attach"),
                                   data.obj = v[ed,-which(colnames(v) %in% c("att"))],
@@ -1052,7 +1047,6 @@ vegManageServer <- function(id, login, tables, tab) {
                                   overwrite = FALSE,
                                   upsert.using = "guid"
                                   )
-                print("success2!")
               }
               
               v$att <- NA # Remove binary data so just storing base64 data
@@ -1063,7 +1057,8 @@ vegManageServer <- function(id, login, tables, tab) {
             dbDisconnect(con0)
             return(r)
           })%...>%(function(r){
-            if(isTruthy(r$error)){
+            print(r)
+            if(!isTruthy(r$visits)){
               submitModal()
               output$submitMessage <- renderUI({
                 tagList(
@@ -1072,7 +1067,6 @@ vegManageServer <- function(id, login, tables, tab) {
                 )
               })
             }else{
-              print("success3!")
               u <- r$visits
               rv$df_v[rv$df_v$plot_reference_visit == rv$v,c(1:ncol(u))] <- u
               
@@ -1098,8 +1092,8 @@ vegManageServer <- function(id, login, tables, tab) {
               }
           })
           }else{
-            print("Not here!?")
-        # New visit
+            
+        ## New visit ----
             v <- rv$df_ph_v[,-c(1)] # Photos to insert, remove id column
             future_promise({
               con0 <- fenDb0(user,password)
@@ -1142,7 +1136,7 @@ vegManageServer <- function(id, login, tables, tab) {
                             last_edited_user,
                             last_edited_date,
                             guid")
-              r <- list(error = NA, visits = NA, photos = NA, photos_u = NA)
+              r <- list(visits = NA, photos = NA, photos_u = NA)
               
               # Insert the new visit and photos
               if(isTruthy(v) && nrow(v) > 0){
