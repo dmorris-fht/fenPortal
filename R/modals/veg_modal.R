@@ -146,7 +146,7 @@ plot_modal <- function(session,d,edit,c) {
                                   shiny::actionButton(
                                     inputId = ns("submit_p"),
                                     label = "Submit",
-                                    icon = shiny::icon("edit"),
+                                    icon = shiny::icon("cloud-arrow-up")
                                   )
                      )
   ) %>% shiny::showModal()
@@ -418,7 +418,7 @@ visit_modal <- function(session,p,v,vd0,vd1,d,edit,s) {
                  shiny::actionButton(
                    inputId = ns("submit_v"),
                    label = "Submit",
-                   icon = shiny::icon("edit"),
+                   icon = shiny::icon("cloud-arrow-up")
                  )
     )
   ) %>% shiny::showModal()
