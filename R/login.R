@@ -32,7 +32,7 @@ loginUI <- function(id){
         div(
             textInput(
               inputId     = ns("username"), 
-              label       = tagList(icon("user"), 
+              label       = tagList(icon = htmltools::browsable(tags$i(class = "fa-solid fa-user")), 
                                     "User Name"),
               placeholder = "Enter user name",
             ),
