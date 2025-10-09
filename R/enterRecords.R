@@ -512,6 +512,22 @@ enterRecordsUI <- function(id){
     tags$script(src ="script.js"),
     tags$script(
       HTML("$('#enterRecords-module').parent().removeClass('shiny-spinner-hidden')")
+    ),
+    
+    tags$script(HTML(
+      '
+        var add = false;
+
+        $(document).ready(function() {
+          $(document).bind("keydown", function(e) {
+            if (e.altKey && e.which == 65 && add) {
+              console.log("ALT+A");
+              $("#enterRecords-add_record").click();
+            }
+          });
+        });
+
+      ')
     )
   )
 }
@@ -553,39 +569,9 @@ enterRecordsServer <- function(id, login, tables, tab) {
       
       observe({
         if(tab == "enterRecords"){
-          runjs(
-            # '
-            #   var down = {};
-            #   $(document).keydown(function(e) {
-            #       down[e.keyCode] = true;
-            #   }).keyup(function(e) {
-            #       if (down[18] && down[65]) {
-            #         $("#enterRecords-add_record").click()
-            #       }
-            #           down[e.keyCode] = false;
-            #           
-            #     });
-            # '
-            
-            'var modKey = false;
-            var modKeyCode = 18;
-            document.body.addEventListener("keydown", function (e) {
-              if (!modKey && modKeyCode == e.keyCode) {
-                modKey = true;
-              }
-              
-              if (modKey && e.keyCode == 65) {
-                $("#enterRecords-add_record").click()
-                modKey = false; //THIS
-              }
-            });
-            
-            document.body.addEventListener("keyup", function (e) {
-              if (modKey && modKeyCode == e.keyCode) {
-                modKey = false;
-              }
-            });'
-          )
+          runjs('add = true;')
+        }else{
+          runjs('add = false;')
         }
       })
       
