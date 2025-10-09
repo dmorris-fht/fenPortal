@@ -855,14 +855,21 @@ queryRecordsServer <- function(id, login, tables) {
       # Data table definitions ----
       output$resultsTable <- DT::renderDT(
         {
-          DT::datatable(data.frame(taxon_name = character(),
-                          site_name = character(),
-                          subsite_name = character(),
-                          gridref = character(),
-                          date_range = character(),
-                          survey_name = character(),
-                          Buttons = character(),
-                          verification = character())
+          x <- data.frame(
+            taxon_name = character(),
+            site_name = character(),
+            subsite_name = character(),
+            gridref = character(),
+            date_range = character(),
+            survey_name = character(),
+            Buttons = character(),
+            verification = character())
+          x$taxon_name <- as.factor(x$taxon_name)
+          x$site_name <- as.factor(x$site_name)
+          x$subsite_name <- as.factor(x$subsite_name)
+          x$survey_name <- as.factor(x$survey_name)
+          
+          DT::datatable(x
                         ,
                         escape = F,
                         rownames = FALSE,
@@ -871,6 +878,8 @@ queryRecordsServer <- function(id, login, tables) {
                         colnames =  c("Taxon","Site","Subsite","Gridref","Date","Date source","",""),
                         options = list(processing = TRUE,
                                        dom = 'tlpi',
+                                       pageLength = 100,
+                                       lengthMenu = list(c(25,50,100,150,200,500,-1),c('25','50','100','150','200','500','All')),
                                        columnDefs = list(
                                          list(orderable = FALSE, targets = c(6)),
                                          list(targets = c(6),searchable = FALSE),
@@ -899,7 +908,7 @@ queryRecordsServer <- function(id, login, tables) {
         ,server = TRUE
         ) 
       
-      proxy_DT <- DT::dataTableProxy("resultsTable")
+      
       
       output$mapTable <- DT::renderDT(
         {
@@ -1340,14 +1349,21 @@ queryRecordsServer <- function(id, login, tables) {
                                    "survey_start_year",
                                    "survey_end_year",
                                    "record_month",
-                                    "record_year")],1,function(x){
-                                     x[which(x == "NA")] <- NA
-                                     paste_na.rm(date_range(x),s="")
+                                    "record_year")],1,function(a){
+                                     a[which(a == "NA")] <- NA
+                                     paste_na.rm(date_range(a),s="")
                                      })
         x <- x[,c("taxon_name","site_name","subsite_name","gridref","date_range","survey_name","Buttons","verification")]
+        x$taxon_name <- as.factor(x$taxon_name)
+        x$site_name <- as.factor(x$site_name)
+        x$subsite_name <- as.factor(x$subsite_name)
+        x$survey_name <- as.factor(x$survey_name)
+        
+        proxy_DT <- DT::dataTableProxy("resultsTable")
+        
         proxy_DT %>% 
           DT::replaceData(data = x, resetPaging = FALSE, rownames = FALSE) %>%
-          updateFilters(data = x)
+            updateFilters(data = x)
       })
       
       observe({
