@@ -141,7 +141,6 @@ function(input, output, session) {
       })
       
       # Hide add data modules for read only roles ----
-      
       if(!(login$role == "cru" || login$role == "cr")){
         runjs(
           "$('ul[data-value=\\'enterRecords\\']').closest('li').hide();
@@ -253,7 +252,7 @@ function(input, output, session) {
         }
       })
       
-      # Initialise dipsImport ----
+      # Initialise stratImport ----
       observe({
         if(n$stratImport == 1 && (login$role == "cru" || login$role == "cr")){
           stratImportServer("stratImport",login,tables)

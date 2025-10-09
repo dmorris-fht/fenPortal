@@ -2,6 +2,8 @@ vegManageUI <- function(id){
   ns <- NS(id)
   tagList(
     useShinyjs(),
+    
+    # Body of UI
     withSpinner(
       tagList(
         div(style="width:100%",
@@ -70,14 +72,32 @@ vegManageUI <- function(id){
       HTML(
         paste0("$('#",id,"-module').parent().removeClass('shiny-spinner-hidden')")
         )
-      )
+      ),
+    
+    # Script for sticky keys
+    tags$script(HTML(
+      '
+        var tab = false;
+        var add_taxon_status = false;
+
+        $(document).ready(function() {
+          $(document).bind("keydown", function(e) {
+            if (e.altKey && e.which == 65 && tab && add_taxon_status) {
+              console.log("ALT+A");
+              $("#vegManage-add_taxon").click();
+            }
+          });
+        });
+
+      ')
+    )
     )
   }
 
 # Bugs
 # - Inconsistent behaviour. Visit modal first time opened, the submit button disabled even after adding a photo. If closed and re-opened, the submit button is enabled. But this is not consistent.
 # - After a few of photo submissions, submission then starts hanging. No clear pattern, sometimes second, sometimes others. File size or other issue? Not consistent. Not sure if it's a photo thing or an issue with another issue hidden in a future.
-
+# - Issue seems to be with first edit of a new visit?
 
 vegManageServer <- function(id, login, tables, tab) {
   moduleServer(
@@ -164,42 +184,17 @@ vegManageServer <- function(id, login, tables, tab) {
       # Keyboard shortcut for add species
       
       observe({
-        if(tab == "vegManage" && add_taxon_status() == 1){
-          runjs(
-            # '
-            #   var down = {};
-            #   $(document).keydown(function(e) {
-            #       down[e.keyCode] = true;
-            #   }).keyup(function(e) {
-            #       if (down[18] && down[65]) {
-            #         $("#vegManage-add_taxon").click()
-            #       }else{
-            #           down[e.keyCode] = false;
-            #           }
-            #           
-            #     });
-            # '
-            
-            'var modKey = false;
-            var modKeyCode = 18;
-            document.body.addEventListener("keydown", function (e) {
-              if (!modKey && modKeyCode == e.keyCode) {
-                modKey = true;
-              }
-              
-              if (modKey && e.keyCode == 65) {
-                $("#vegManage-add_taxon").click()
-                modKey = false; //THIS
-              }
-            });
-            
-            document.body.addEventListener("keyup", function (e) {
-              if (modKey && modKeyCode == e.keyCode) {
-                modKey = false;
-              }
-            });'
-          )
+        if(tab == "vegManage"){
+          runjs('tab = true;')
+        }else{
+          runjs('tab = false;')
         }
+        if(add_taxon_status() == 1){
+          runjs('add_taxon_status = true')
+        }else{
+          runjs('add_taxon_status = false')
+        }
+        
       })
       
       # Reactive for add_taxon button enabled / disabled 
