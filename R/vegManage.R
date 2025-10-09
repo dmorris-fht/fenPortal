@@ -166,17 +166,38 @@ vegManageServer <- function(id, login, tables, tab) {
       observe({
         if(tab == "vegManage" && add_taxon_status() == 1){
           runjs(
-            '
-              var down = {};
-              $(document).keydown(function(e) {
-                  down[e.keyCode] = true;
-              }).keyup(function(e) {
-                  if (down[18] && down[65]) {
-                    $("#vegManage-add_taxon").click()
-                      }
-                      down[e.keyCode] = false;
-                });
-            '
+            # '
+            #   var down = {};
+            #   $(document).keydown(function(e) {
+            #       down[e.keyCode] = true;
+            #   }).keyup(function(e) {
+            #       if (down[18] && down[65]) {
+            #         $("#vegManage-add_taxon").click()
+            #       }else{
+            #           down[e.keyCode] = false;
+            #           }
+            #           
+            #     });
+            # '
+            
+            'var modKey = false;
+            var modKeyCode = 18;
+            document.body.addEventListener("keydown", function (e) {
+              if (!modKey && modKeyCode == e.keyCode) {
+                modKey = true;
+              }
+              
+              if (modKey && e.keyCode == 65) {
+                $("#vegManage-add_taxon").click()
+                modKey = false; //THIS
+              }
+            });
+            
+            document.body.addEventListener("keyup", function (e) {
+              if (modKey && modKeyCode == e.keyCode) {
+                modKey = false;
+              }
+            });'
           )
         }
       })
