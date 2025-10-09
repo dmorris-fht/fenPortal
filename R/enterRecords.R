@@ -554,17 +554,37 @@ enterRecordsServer <- function(id, login, tables, tab) {
       observe({
         if(tab == "enterRecords"){
           runjs(
-            '
-              var down = {};
-              $(document).keydown(function(e) {
-                  down[e.keyCode] = true;
-              }).keyup(function(e) {
-                  if (down[18] && down[65]) {
-                    $("#enterRecords-add_record").click()
-                      }
-                      down[e.keyCode] = false;
-                });
-            '
+            # '
+            #   var down = {};
+            #   $(document).keydown(function(e) {
+            #       down[e.keyCode] = true;
+            #   }).keyup(function(e) {
+            #       if (down[18] && down[65]) {
+            #         $("#enterRecords-add_record").click()
+            #       }
+            #           down[e.keyCode] = false;
+            #           
+            #     });
+            # '
+            
+            'var modKey = false;
+            var modKeyCode = 18;
+            document.body.addEventListener("keydown", function (e) {
+              if (!modKey && modKeyCode == e.keyCode) {
+                modKey = true;
+              }
+              
+              if (modKey && e.keyCode == 65) {
+                $("#enterRecords-add_record").click()
+                modKey = false; //THIS
+              }
+            });
+            
+            document.body.addEventListener("keyup", function (e) {
+              if (modKey && modKeyCode == e.keyCode) {
+                modKey = false;
+              }
+            });'
           )
         }
       })
@@ -935,11 +955,13 @@ enterRecordsServer <- function(id, login, tables, tab) {
       output$recordsTable <- DT::renderDT(
         {
           x <- isolate(d$data)
-          
-          x[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
-            
-          
-        }
+          x <- x[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
+          x$taxon_name <- as.factor(x$taxon_name)
+          x$site_name <- as.factor(x$site_name)
+          x$subsite_name <- as.factor(x$subsite_name)
+          x$record_date <- as.Date(x$record_date,format = "%Y-%m-%d")
+          x
+          }
         ,
         server = TRUE,
         escape = FALSE,
@@ -949,6 +971,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
         colnames =  c("Taxon","Site","Subsite","Gridref","Date",""),
         options = list(processing = TRUE,
                        dom = 'tlpi',pageLength = 100,
+                       lengthMenu = list(c(25,50,100,-1),c('25','50','100','All')),
                        columnDefs = list(
                           list(orderable = FALSE, targets = c(5)),
                           list(targets = c(5),searchable = FALSE),
@@ -962,10 +985,20 @@ enterRecordsServer <- function(id, login, tables, tab) {
       
       #%>% formatStyle(0, target='row', backgroundColor = styleEqual(marked(),rep("red",length(marked()))))
       
-      proxy <- DT::dataTableProxy("recordsTable")
+      
       
       observe({
+        req(d$data)
+        req(nrow(d$data) > 0)
+        
           x <- d$data[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
+          x$taxon_name <- as.factor(x$taxon_name)
+          x$site_name <- as.factor(x$site_name)
+          x$subsite_name <- as.factor(x$subsite_name)
+          x$record_date <- as.Date(x$record_date,format = "%Y-%m-%d")
+          
+          proxy <- DT::dataTableProxy("recordsTable")
+          
           proxy %>%
             DT::replaceData(data = x, resetPaging = FALSE, rownames = FALSE) %>%
               updateFilters(data = x)
