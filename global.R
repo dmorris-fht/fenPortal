@@ -1241,6 +1241,7 @@ app_tables <- function(tables,t){
 uksi_full <- NULL
 uksi_pl_rec <- NULL
 choices_uksi <- NULL
+choices_uksi_rec <- NULL
 choices_uksi_1 <- NULL
 choices_uksi_plants <- NULL
 string_fspp <- NULL
@@ -1255,7 +1256,11 @@ uksi_load <- function(x){
     # Taxon names with qualifiers and authorities
     choices_uksi <<- uksi_full$nbn_taxon_version_key
     names(choices_uksi) <<- uksi_full$full_name
-  }
+    
+    uksi_full_rec <- uksi_full[uksi_full$nbn_taxon_version_key == uksi_full$nbn_taxon_version_key_for_recommended_name,]
+    choices_uksi_rec <<- uksi_full_rec$nbn_taxon_version_key
+    names(choices_uksi_rec) <<- uksi_full_rec$full_name    
+    }
   if(1 %in% x && !isTruthy(choices_uksi_1)){
     if(!isTruthy(uksi_full)){
       uksi_full <<- read.csv("./www/uksi.csv", header = TRUE, encoding = "UTF-8")
