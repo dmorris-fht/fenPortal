@@ -1012,7 +1012,6 @@ enterRecordsServer <- function(id, login, tables, tab) {
       
       observe({
         req(d$data)
-        req(nrow(d$data) > 0)
         
           x <- d$data[,c("taxon_name","site_name","subsite_name","gridref","record_date","Buttons")]
           x$taxon_name <- as.factor(x$taxon_name)
