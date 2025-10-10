@@ -93,13 +93,24 @@ enterRecordsUI <- function(id){
                                  inputId = ns("taxon_nbn_check"), value = FALSE, label = NULL
                                ) %>% tagAppendAttributes(class = 'compact')
                            ),
-                           div(style="float:left;width:90%",
+                           div(style="float:left;width:70%",
                                selectizeInput(
                                  inputId = ns("taxon_nbn"),
                                  label = "Taxon",
                                  choices = c(""),
                                  multiple = TRUE,
                                  options = list(maxItems = 1, placeholder = 'Select a taxon')
+                               ) %>% tagAppendAttributes(class = 'compact')
+                           ),
+                           div(style="width:25%;position:absolute;height:100%;top:25%;left:75%",
+                               switchInput(
+                                 inputId = ns("taxonSwitch"),
+                                 label = "Synonyms",
+                                 value = FALSE,
+                                 onLabel = "On",
+                                 offLabel = "Off"
+                                 
+                                 
                                ) %>% tagAppendAttributes(class = 'compact')
                            )
                          )
@@ -556,6 +567,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
         req(tables$projects)
         req(choices_uksi)
         req(choices_uksi_1)
+        req(choices_uksi_rec)
         
         runjs(
           paste0(
@@ -563,10 +575,47 @@ enterRecordsServer <- function(id, login, tables, tab) {
                  $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
           )
         )
+        
+        # Update input boxes once tables loaded
+        updateSelectizeInput(session,
+                             "taxon_nbn",
+                             choices=choices_uksi_rec, 
+                             selected = "",
+                             server = TRUE,
+                             options = list(
+                               maxItems = 1,
+                               onInitialize = I('function() { this.setValue(""); }')
+                               )
+                             )
+      })
+      
+      observeEvent(input$taxonSwitch,{
+        if(input$taxonSwitch){
+          updateSelectizeInput(session,
+                               "taxon_nbn",
+                               choices=choices_uksi, 
+                               selected = "",
+                               server = TRUE,
+                               options = list(
+                                 maxItems = 1,
+                                 onInitialize = I('function() { this.setValue(""); }')
+                               )
+          )
+        }else{
+          updateSelectizeInput(session,
+                               "taxon_nbn",
+                               choices=choices_uksi_rec, 
+                               selected = "",
+                               server = TRUE,
+                               options = list(
+                                 maxItems = 1,
+                                 onInitialize = I('function() { this.setValue(""); }')
+                               )
+          )
+        }
       })
       
       # Keyboard shortcut for add record
-      
       observe({
         if(tab == "enterRecords"){
           runjs('add = true;')
@@ -579,18 +628,6 @@ enterRecordsServer <- function(id, login, tables, tab) {
       source("./R/modals/site_modal.R")
       source("./R/modals/survey_modal.R")
 
-      # Update input boxes once tables loaded
-      updateSelectizeInput(session,
-                           "taxon_nbn",
-                           choices=choices_uksi, 
-                           selected = "",
-                           server = TRUE,
-                           options = list(
-                             maxItems = 1,
-                             onInitialize = I('function() { this.setValue(""); }')
-                           )
-      )
-      
       choices_site <- reactive({
         if(isTruthy(tables$sites)){
           c <- tables$sites$id
