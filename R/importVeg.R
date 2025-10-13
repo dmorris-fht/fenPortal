@@ -22,7 +22,7 @@ importVegUI <- function(id){
                                    the 'validate' button to check the following."),
                                  
                                  div(style="padding-bottom:5px",
-                                     div(style="float:left;padding-right:5px",HTML("<li>Plots names are all present in the database</li>")),
+                                     div(style="float:left;padding-right:5px",HTML("<li>Plots names are all present in the database and not duplicated</li>")),
                                      uiOutput(ns("plotTick"))
                                  ),br(),
                                  div(style="padding-bottom:5px",
@@ -120,7 +120,7 @@ importVegServer <- function(id, login, tables) {
       isolate({
         app_tables(tables, c("sites","surveys","plots"))
         
-        uksi_load(c(1,2,3))
+        uksi_load(c(0,1,2,3))
       })
       
       observe({
@@ -364,7 +364,9 @@ importVegServer <- function(id, login, tables) {
           d <- data[,c(3:ncol(data))]
           v <- d
           v[] <- 1
-          v[1,] <- d[1,] %in% tables$plots[tables$plots$site == as.numeric(s),]$plot # Check plots
+          v[1,] <- d[1,] %in% tables$plots[tables$plots$site == as.numeric(s),]$plot # Check plot names
+          v[1,] <- v[1,] * (sapply(d[1,],function(x) sum(x == d[1,]))==1) # check if Plot names duplicated
+          
           v[3,] <- sapply(d[3,],function(x) ifelse(isTruthy(as.Date(x,format="%d/%m/%Y")),1,0))
           v[4:7,] <- as.data.frame(t(apply(d[4:7,],1, function(x) ifelse(!is.na(as.numeric(x)) | x == "" | is.na(x),1,0))))
           
@@ -403,7 +405,11 @@ importVegServer <- function(id, login, tables) {
           
           # Plots
           if(i0 == 1 &
-             !(d[i0,j0] %in% tables$plots[tables$plots$site == as.numeric(input$site),]$plot)){
+             !(
+               d[i0,j0] %in% tables$plots[tables$plots$site == as.numeric(input$site),]$plot &&
+               sum(d[1,] == d[i0,j0]) == 1 # check if Plot names duplicated
+               
+               )){
             v <- 0
           }
           # Dates
