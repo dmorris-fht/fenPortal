@@ -158,7 +158,11 @@ vegManageServer <- function(id, login, tables, tab) {
       
       choices_surveys <- reactive({
         req(tables$surveys)
-        x <- tables$surveys[tables$surveys$status == "open",]
+        if(isTruthy(input$current_id) && stringr::str_detect(input$current_id, pattern = "visits_info")){
+          x <- tables$surveys
+        }else{
+          x <- tables$surveys[tables$surveys$status == "open",]
+        }
         c <- x$id
         names(c) <- x$survey
         return(c)
@@ -974,9 +978,16 @@ vegManageServer <- function(id, login, tables, tab) {
         )
         
         ## Update visit ----
-       
+       print(!is.null(input$current_id))
+        print(stringr::str_detect(input$current_id, pattern = "edit"))
+        print(rv$add_or_edit)
+        
         if(!is.null(input$current_id) && stringr::str_detect(input$current_id, pattern = "edit") && rv$add_or_edit == 0){
-          req(change() > 0)
+          print("here")
+          
+          #req(change() > 0) #Disabled until I can get the change tracker to work
+          
+          print("change?")
           v <- rv$df_ph_v[!is.na(rv$df_ph_v$edit),] # Edited photos & remove id col
           v <- v[,-c(1)]
           
@@ -1073,7 +1084,6 @@ vegManageServer <- function(id, login, tables, tab) {
             dbDisconnect(con0)
             return(r)
           })%...>%(function(r){
-            print(r)
             if(!isTruthy(r$visits)){
               submitModal()
               output$submitMessage <- renderUI({
@@ -2076,7 +2086,7 @@ vegManageServer <- function(id, login, tables, tab) {
             "created_user","created_date","last_edited_user","last_edited_date"
           )] # partial_shade,pool,tufa not implemented in modal as checkboxes don't accept nulls
           
-          visit_modal(session,p = rv$p,v = v,vd0 = NULL, vd1 = NULL,d = d,edit = FALSE,s = choices_surveys())
+          visit_modal(session,p = rv$p,v = v,vd0 = NULL, vd1 = NULL,d = d,edit = FALSE,s = choices_surveys()) 
           photoHandler()
           output$photo <- renderUI({p("No photo selected")})
           
