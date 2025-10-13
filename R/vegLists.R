@@ -231,15 +231,16 @@ vegListsServer <- function(id, tables) {
             p <- spread(d2, key = "plot_reference_visit", value = "value")
             
             p$att <- as.character(p$att)
-            rownames(p) <- p$att
-            
+            p <- cbind(p[,1],rep(NA,nrow(p)),p[,2:ncol(p)])
+            colnames(p)[c(1,2)]<- c("att","")
+
             nbn <- p[9:nrow(p),"att"]
             taxon_names <- uksi_full[uksi_full$nbn_taxon_version_key %in% nbn ,c("nbn_taxon_version_key","name")]
             taxon_names <- taxon_names[match(nbn ,taxon_names$nbn_taxon_version_key),"name"]
             
-            p[9:nrow(p),"att"] <- taxon_names
+            p[9:nrow(p),2] <- taxon_names
             
-            p[9:nrow(p),] <- p[9:nrow(p),] %>% arrange(att)
+            p <- p[order(p[,2],na.last=F),]
             
             name <- paste0(tables$sites[tables$sites$id == as.numeric(input$site), c("site")], " veg ",format(Sys.time(),format="%Y%m%d%H%M%S"))
             
