@@ -779,7 +779,7 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$taxon_nbn_check == 1){
           shinyjs::disable('taxon_nbn')
-          updateSelectizeInput(session,'taxon_nbn',selected = input$taxon_nbn)}
+          updateSelectizeInput(session,'taxon_nbn',selected = input$taxon_nbn,server = TRUE)}
       })
       observeEvent(input$gridref_check,{
         if(input$gridref_check == 0){
@@ -1042,7 +1042,11 @@ enterRecordsServer <- function(id, login, tables, tab) {
           
           updateSelectizeInput(session,'subsite',selected = d$data[a,c('subsite')],choices = choices_subsite())
           
-          updateSelectizeInput(session,'taxon_nbn',selected = d$data[a,c('taxon_nbn')])
+          if(input$taxonSwitch){
+            updateSelectizeInput(session,'taxon_nbn',selected = d$data[a,c('taxon_nbn')],choices=choices_uksi,server = TRUE)
+          }else{
+            updateSelectizeInput(session,'taxon_nbn',selected = d$data[a,c('taxon_nbn')],choices=choices_uksi_rec,server = TRUE)
+          }
           
           updateTextInput(session,'gridref', value = d$data[a,c('gridref')])
           updateTextInput(session,'quantity', value = d$data[a,c('quantity')])
