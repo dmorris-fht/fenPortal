@@ -338,6 +338,21 @@ div[data-spinner-id~="transloc-module"] {
   z-index: 10000000;
 }
 
+/* Data sharing module */
+
+div[data-spinner-id~="dataSharing-module"] {
+  display: inline-block;
+  width:100%;
+  height:100%;
+}
+
+.load-container:has(> #dataSharing-module) {
+  background:rgba(250,250,250,0.4);
+  height:100%;
+  width:100%;
+  z-index: 10000000;
+}
+
 /* importObs module */
 
 div[data-spinner-id~="importObs-module"] {

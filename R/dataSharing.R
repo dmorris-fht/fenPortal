@@ -1,6 +1,8 @@
 dataSharingUI <- function(id){
   ns <- NS(id)
   tagList(
+    withSpinner(
+  tagList(
     column(12,
                   column(8,
                          h4("Data sharing"),
@@ -93,14 +95,29 @@ dataSharingUI <- function(id){
     ,
     tags$script(src ="script.js")
   )
+  ,
+  id = ns("module"),
+  type = 4,
+  size = 2,
+  proxy.height = "100%",
+  hide.ui = TRUE,
+  caption = "Loading module"),
+  tags$script(src ="script.js"),
+  tags$script(
+    HTML("$('#dataSharing-module').parent().removeClass('shiny-spinner-hidden')")
+  )
+  )
 }
 
 dataSharingServer <- function(id, login){
   moduleServer(
     id,
     function(input, output, session) {
-      con <- login$con
+      
+      ## Initialisation ----
+      
       user <- login$username
+      password <- login$password
       
       #Load modals ----
       source("./R/modals/export_modal.R")
@@ -140,7 +157,7 @@ dataSharingServer <- function(id, login){
         
       # Get data sharing info ----
         future_promise({
-          con0 <- poolCheckout(con)
+          con0 <- poolCheckout(con_global)
           tryCatch({
             s <- dbGetQuery(con0, "SELECT * FROM records.data_sharing ORDER BY id")
             e <- dbGetQuery(con0,"SELECT * FROM records.data_sharing_exports ORDER BY id")
@@ -167,6 +184,13 @@ dataSharingServer <- function(id, login){
                 maxItems = 1)
               )
             rv$exp <- result$exp
+            
+            runjs(
+              paste0(
+                "$('#",id,"-module').parent().addClass('shiny-spinner-hidden');
+                 $('div[data-spinner-id=\\'",id,"-module\\']').css('display','inline')"
+              )
+            )
             })
 
       # Data sharing name selection populate fields and DT ----
@@ -330,7 +354,7 @@ dataSharingServer <- function(id, login){
           
           #Table export
             future_promise({
-              con0 <- poolCheckout(login$con)
+              con0 <- fenDb0(user,password)
                 q_exp <- paste0(
                   "INSERT INTO records.data_sharing_exports
                   (sharing, export_date, export_note, export_user)
@@ -349,7 +373,7 @@ dataSharingServer <- function(id, login){
 
                 i1 <- dbGetQuery(con0, q_exp)
  
-                poolReturn(con0)
+                dbDisconnect(con0)
                 return(list("err" = NA, "d" = d1, "i" = i1))
               })%...>% (function(result) {
                 if(isTruthy(result$d)){
