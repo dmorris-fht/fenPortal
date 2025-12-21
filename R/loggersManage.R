@@ -1,3 +1,7 @@
+# To do:
+#   - Add remove date / by fields to logger installs
+#   - When new log config added, DT only shows new config
+
 loggersManageUI <- function(id){
   ns <- NS(id)
   tagList(
@@ -530,15 +534,18 @@ loggersManageServer <- function(id, login, tables) {
           install <- paste0(rv$installs[rv$installs$id == input$install,c("site_name")],
                  " - ",
                  rv$installs[rv$installs$id == input$install,c("install_name")])
-
+          
+          logger_config <- max(rv$df_lc[rv$df_lc$logger == serial,"id"])
+          
           future_promise({
             con0 <- fenDb0(user,password)
-            q <- paste0("INSERT INTO hydro_monitoring.logger_installs (logger, install, install_date, install_by, install_notes) VALUES ('"
+            q <- paste0("INSERT INTO hydro_monitoring.logger_installs (logger, install, install_date, install_by, install_notes, logger_config) VALUES ('"
                         , serial, "',",
                         null_text_val(con0,input$install), ",",
-                        null_date_val(input$install_date), ",",
+                        null_timestamp_val(input$install_date), ",",
                         null_text_val(con0,input$install_by) , ",",
-                        null_text_val(con0,input$install_notes), ") RETURNING id")
+                        null_text_val(con0,input$install_notes), ",
+                        ",logger_config,") RETURNING id")
             insert <- dbGetQuery(con0, q)
             dbDisconnect(con0)
             return(insert)

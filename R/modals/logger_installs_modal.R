@@ -28,12 +28,22 @@ logger_installs_modal_dialog <- function(session, install, install_date, install
         
       div(
         style = "display: inline-block; width:90%",
-        dateInput(
+        # dateInput(
+        #   inputId = ns("install_date"),
+        #   label = "Logger installation date:",
+        #   value = install_date,
+        #   format = "dd/mm/yyyy"
+        # )
+        
+        airDatepickerInput(
           inputId = ns("install_date"),
-          label = "Logger installation date:",
+          label = "Logger installation date/time:",
           value = install_date,
-          format = "dd/mm/yyyy"
+          timepicker = TRUE,
+          dateFormat = "dd/mm/yyyy"
         )
+        
+        
       ),br(),
       div(
         style = "display: inline-block; width:90%",
