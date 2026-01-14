@@ -751,7 +751,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$site_record_check == 1){
           shinyjs::disable('site_record')
-          updateTextInput(session,'site_record',value = input$site_record)}
+          #updateTextInput(session,'site_record',value = input$site_record)
+          }
       })
       observeEvent(input$site_check,{
         if(input$site_check == 0){
@@ -759,7 +760,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$site_check == 1){
           shinyjs::disable('site')
-          updateSelectizeInput(session,'site',selected = input$site)}
+          #updateSelectizeInput(session,'site',selected = input$site)
+          }
       })
       
       observeEvent(input$subsite_check,{
@@ -770,7 +772,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         if(input$subsite_check == 1){
           shinyjs::disable('subsite')
           shinyjs::disable("new_subsite")
-          updateSelectizeInput(session,'subsite',selected = input$subsite)}
+          #updateSelectizeInput(session,'subsite',selected = input$subsite)
+          }
       })
       
       observeEvent(input$taxon_nbn_check,{
@@ -779,15 +782,26 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$taxon_nbn_check == 1){
           shinyjs::disable('taxon_nbn')
-          updateSelectizeInput(session,'taxon_nbn',selected = input$taxon_nbn,server = TRUE)}
-      })
+          
+          # DONT NEED THIS. NOT SURE WHY I HAD AN UPDATESELECTIZE HERE OR IN ANY OF 
+          # if(input$taxonSwitch){
+          #   updateSelectizeInput(session,'taxon_nbn',selected = input$taxon_nbn,choices=choices_uksi,server = TRUE)
+          # }else{
+          #   t <- ifelse(input$taxon_nbn %in% choices_uksi_rec, input$taxon_nbn, "")
+          #   updateSelectizeInput(session,'taxon_nbn',selected = t, choices=choices_uksi_rec,server = TRUE)
+          # }
+        }
+          
+          
+          })
       observeEvent(input$gridref_check,{
         if(input$gridref_check == 0){
           shinyjs::enable('gridref')
         }
         if(input$gridref_check == 1){
           shinyjs::disable('gridref')
-          updateTextInput(session,'gridref',value = input$gridref)}
+          #updateTextInput(session,'gridref',value = input$gridref)
+          }
       })
       observeEvent(input$quantity_check,{
         if(input$quantity_check == 0){
@@ -795,7 +809,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$quantity_check == 1){
           shinyjs::disable('quantity')
-          updateTextInput(session,'quantity',value = input$quantity)}
+          #updateTextInput(session,'quantity',value = input$quantity)
+          }
       })
       observeEvent(input$status_check,{
         if(input$status_check == 0){
@@ -803,7 +818,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$status_check == 1){
           shinyjs::disable('status')
-          updateSelectizeInput(session,'status',selected = input$status)}
+          #updateSelectizeInput(session,'status',selected = input$status)
+          }
       })
       observeEvent(input$sex_check,{
         if(input$sex_check == 0){
@@ -811,7 +827,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$sex_check == 1){
           shinyjs::disable('sex')
-          updateTextInput(session,'sex',value = input$sex)}
+          #updateTextInput(session,'sex',value = input$sex)
+          }
       })
       observeEvent(input$stage_check,{
         if(input$stage_check == 0){
@@ -819,7 +836,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$stage_check == 1){
           shinyjs::disable('stage')
-          updateTextInput(session,'stage',value = input$stage)}
+          #updateTextInput(session,'stage',value = input$stage)
+          }
       })
       observeEvent(input$note_check,{
         if(input$note_check == 0){
@@ -827,7 +845,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$note_check == 1){
           shinyjs::disable('note')
-          updateTextAreaInput(session,'note',value = input$note)}
+          #updateTextAreaInput(session,'note',value = input$note)
+          }
       })
       observeEvent(input$record_date_check,{
         if(input$record_date_check == 0){
@@ -835,7 +854,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$record_date_check == 1){
           shinyjs::disable('record_date')
-          updateDateInput(session,'record_date',value = input$record_date)}
+          #updateDateInput(session,'record_date',value = input$record_date)
+          }
       })
       observeEvent(input$record_year_check,{
         if(input$record_year_check == 0){
@@ -843,7 +863,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$record_year_check == 1){
           shinyjs::disable('record_year')
-          updateDateInput(session,'record_year',value = input$record_year)}
+          #updateDateInput(session,'record_year',value = input$record_year)
+          }
       })
       observeEvent(input$record_month_check,{
         if(input$record_month_check == 0){
@@ -851,7 +872,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$record_month_check == 1){
           shinyjs::disable('record_month')
-          updateDateInput(session,'record_month',value = input$record_month)}
+          #updateDateInput(session,'record_month',value = input$record_month)
+          }
       })
       observeEvent(input$record_date_start_check,{
         if(input$record_date_start_check == 0){
@@ -859,7 +881,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$record_date_start_check == 1){
           shinyjs::disable('record_date_start')
-          updateDateInput(session,'record_date_start',value = input$record_date_start)}
+          #updateDateInput(session,'record_date_start',value = input$record_date_start)
+          }
       })
       observeEvent(input$record_date_end_check,{
         if(input$record_date_end_check == 0){
@@ -867,7 +890,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$record_date_end_check == 1){
           shinyjs::disable('record_date_end')
-          updateDateInput(session,'record_date_end',value = input$record_date_end)}
+          #updateDateInput(session,'record_date_end',value = input$record_date_end)
+          }
       })
       observeEvent(input$recorder_check,{
         if(input$recorder_check == 0){
@@ -875,7 +899,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$recorder_check == 1){
           shinyjs::disable('recorder')
-          updateTextInput(session,'recorder',value = input$recorder)}
+          #updateTextInput(session,'recorder',value = input$recorder)
+          }
       })
       observeEvent(input$determiner_check,{
         if(input$determiner_check == 0){
@@ -883,7 +908,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$determiner_check == 1){
           shinyjs::disable('determiner')
-          updateTextInput(session,'determiner',value = input$determiner)}
+          #updateTextInput(session,'determiner',value = input$determiner)
+          }
       })
       observeEvent(input$method_check,{
         if(input$method_check == 0){
@@ -891,7 +917,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$method_check == 1){
           shinyjs::disable('method')
-          updateTextInput(session,'method',value = input$method)}
+          #updateTextInput(session,'method',value = input$method)
+          }
       })
       observeEvent(input$survey_check,{
         if(input$survey_check == 0){
@@ -901,7 +928,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         if(input$survey_check == 1){
           shinyjs::disable('survey')
           shinyjs::disable("new_survey")
-          updateSelectizeInput(session,'survey',selected = input$survey)}
+          #updateSelectizeInput(session,'survey',selected = input$survey)
+          }
       })
       observeEvent(input$start_year_check,{
         if(input$start_year_check == 0){
@@ -909,7 +937,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$start_year_check == 1){
           shinyjs::disable('start_year')
-          updateDateInput(session,'start_year',value = input$start_year)}
+          #updateDateInput(session,'start_year',value = input$start_year)
+          }
       })
       observeEvent(input$end_year_check,{
         if(input$end_year_check == 0){
@@ -917,7 +946,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$end_year_check == 1){
           shinyjs::disable('end_year')
-          updateNumericInput(session,'end_year',value = input$end_year)}
+          #updateNumericInput(session,'end_year',value = input$end_year)
+          }
       })
       observeEvent(input$start_month_check,{
         if(input$start_month_check == 0){
@@ -925,7 +955,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$start_month_check == 1){
           shinyjs::disable('start_month')
-          updateNumericInput(session,'start_month',value = input$start_month)}
+          #updateNumericInput(session,'start_month',value = input$start_month)
+          }
       })
       observeEvent(input$end_month_check,{
         if(input$end_month_check == 0){
@@ -933,7 +964,8 @@ enterRecordsServer <- function(id, login, tables, tab) {
         }
         if(input$end_month_check == 1){
           shinyjs::disable('end_month')
-          updateNumericInput(session,'end_month',value = input$end_month)}
+          #updateNumericInput(session,'end_month',value = input$end_month)
+          }
       })
       
       ## Form validation ----
